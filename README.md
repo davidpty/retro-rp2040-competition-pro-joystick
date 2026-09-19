@@ -8,6 +8,10 @@ The board can also replace the original USB electronics inside retro-style joyst
 
 Useful for **retro joystick USB adapters**, **Competition Pro upgrades**, **replacement joystick electronics**, and custom arcade or emulator controllers. The firmware supports configurable GPIO and button mappings, autofire, non-volatile settings, status LED feedback, BOOTSEL update mode, and selectable fast or compatibility reporting modes.
 
+## Download the firmware
+
+The compiled UF2 firmware is available from the [latest GitHub release](https://github.com/davidpty/retro-rp2040-joystick/releases/latest). Download `rp2040_zero_hid_joystick.uf2` and copy it to the `RPI-RP2` drive while the RP2040-Zero is in BOOTSEL mode.
+
 ## Quick start
 
 ### 1. Wire the controls
