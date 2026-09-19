@@ -1,8 +1,12 @@
-# Competition Pro USB joystick
+# Retro RP2040 USB Joystick
 
-This project provides a reusable USB interface for classic digital joysticks. With a suitable DE-9 connector or adapter harness, compatible C64, Amiga, Atari, and other 9-pin joysticks can be connected to the RP2040-Zero and converted into standard USB HID controllers.
+Open-source **RP2040-Zero firmware for converting classic digital joysticks into USB HID game controllers**. Designed for DIY retro-computing and gaming projects using Commodore 64, Amiga, Atari, Competition Pro, and other DE-9 joysticks.
+
+This project provides a reusable USB interface for classic digital joysticks. With a suitable DE-9 connector or adapter harness, compatible C64, Amiga, Atari, and other 9-pin joysticks can be connected to a Raspberry Pi Pico-compatible RP2040-Zero board and used as standard USB HID controllers on Linux, Windows, and other USB host systems.
 
 The board can also replace the original USB electronics inside retro-style joysticks such as the older Speedlink Competition Pro SL-6602. That hardware reports input changes at only about 12.5 times per second, which can cause noticeable lag in fast games. Replacing the controller with this RP2040-based firmware allows the original switches and enclosure to be retained while adding faster USB reporting, configurable button mappings, autofire, and selectable fast or slow compatibility modes.
+
+Useful for **retro joystick USB adapters**, **Competition Pro upgrades**, **replacement joystick electronics**, and custom arcade or emulator controllers. The firmware supports configurable GPIO and button mappings, autofire, non-volatile settings, status LED feedback, BOOTSEL update mode, and selectable fast or compatibility reporting modes.
 
 ## Quick start
 
