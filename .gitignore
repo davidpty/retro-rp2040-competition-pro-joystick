@@ -1,0 +1,6 @@
+build/
+build-host-tests/
+*.uf2
+*.elf
+*.bin
+*.hex
