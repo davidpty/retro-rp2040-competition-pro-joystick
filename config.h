@@ -49,7 +49,7 @@
 #define JOY_USB_VID           0xcafe
 #define JOY_USB_PID           0x4022
 #define JOY_USB_BCD_DEVICE    0x0100
-#define JOY_USB_MANUFACTURER  "Retro RP2040"
+#define JOY_USB_MANUFACTURER  "Retro 2040"
 #define JOY_USB_PRODUCT       "Competition Pro"
 /* USB serial is the 16-character board ID. */
 
