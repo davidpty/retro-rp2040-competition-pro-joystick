@@ -1,16 +1,23 @@
 # Retro RP2040 USB Joystick
 
-Open-source **RP2040-Zero firmware for converting classic digital joysticks into USB HID game controllers**. Designed for DIY retro-computing and gaming projects using Commodore 64, Amiga, Atari, Competition Pro, and other DE-9 joysticks.
+Turn a classic C64, Amiga, Atari, Competition Pro, or other DE-9 joystick into a modern USB controller with an RP2040-Zero.
 
-This project provides a reusable USB interface for classic digital joysticks. With a suitable DE-9 connector or adapter harness, compatible C64, Amiga, Atari, and other 9-pin joysticks can be connected to a Raspberry Pi Pico-compatible RP2040-Zero board and used as standard USB HID controllers on Linux, Windows, and other USB host systems.
+The original switches and enclosure can be kept while the firmware adds faster input response and flexible controls for computers, games, and emulators. It can send button presses to a USB gamepad, type keyboard keys, or do both depending on the selected mapping.
 
-The board can also replace the original USB electronics inside retro-style joysticks such as the older Speedlink Competition Pro SL-6602. That hardware reports input changes at only about 12.5 times per second, which can cause noticeable lag in fast games. Replacing the controller with this RP2040-based firmware allows the original switches and enclosure to be retained while adding faster USB reporting, configurable button mappings, autofire, and selectable fast or slow compatibility modes.
+### Key features
 
-Useful for **retro joystick USB adapters**, **Competition Pro upgrades**, **replacement joystick electronics**, and custom arcade or emulator controllers. The firmware supports configurable GPIO and button mappings, autofire, non-volatile settings, status LED feedback, BOOTSEL update mode, and selectable fast or compatibility reporting modes.
+- Four persistent button-mapping profiles named Red, Green, Purple, and Yellow.
+- Each profile can assign the physical fire buttons to gamepad buttons, keyboard keys, or keyboard modifiers.
+- Optional autofire can be assigned to any mapped button.
+- Hold both small buttons and move the joystick Up, Down, Left, or Right to select a profile.
+- Fast polling for responsive games and slow polling for compatibility with older systems.
+- A simple USB configuration drive for editing all four profiles without rebuilding the firmware.
+- Status LED feedback for the active mapping, autofire, configuration mode, and compatibility mode.
+- Settings are saved across reboots, with a factory reset that restores only the Red mapping and leaves the other profiles untouched.
 
 ## Download the firmware
 
-The compiled UF2 firmware is available from the [latest GitHub release](https://github.com/davidpty/retro-rp2040-joystick/releases/latest). Download `rp2040_zero_hid_joystick.uf2` and copy it to the `RPI-RP2` drive while the RP2040-Zero is in BOOTSEL mode.
+The compiled UF2 firmware is available from the [latest GitHub release](https://github.com/davidpty/retro-rp2040-competition-pro-joystick/releases/latest). Download `rp2040_zero_hid_joystick.uf2` and copy it to the `RPI-RP2` drive while the RP2040-Zero is in BOOTSEL mode.
 
 ## Quick start
 
@@ -40,9 +47,20 @@ Default USB mapping:
 | Small Fire 1 | Autofire for Button 1 |
 | Small Fire 2 | Button 3 |
 
+Every output can be remapped at runtime through the built-in configuration
+drive — see [Configuring the fire buttons](#configuring-the-fire-buttons).
+
 ### 2. Build the firmware
 
-Install the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk), then set its path and run the build script:
+Install CMake, the ARM GCC toolchain, and the [Raspberry Pi Pico SDK](https://github.com/raspberrypi/pico-sdk). On Debian or Ubuntu:
+
+```sh
+sudo apt install cmake ninja-build gcc-arm-none-eabi \
+  libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib
+```
+
+Set `PICO_SDK_PATH` to the SDK directory and run the included build script. It
+checks for a working native CMake executable before configuring the project:
 
 ```sh
 PICO_SDK_PATH=/path/to/pico-sdk ./build-firmware.sh
@@ -68,14 +86,35 @@ The board reboots automatically and should appear as `Retro 2040 Competition Pro
 
 ## Using the joystick
 
+The device presents two USB interfaces: a **gamepad** with two axes and four
+buttons, and a **keyboard**. Fire buttons map to gamepad buttons or keyboard
+keys depending on the configured codes.
+
 - The default mode reports input quickly, approximately every 1 ms.
 - Direction pairs report center when both directions on the same axis are pressed.
-- Hold Small Fire 1 to enable autofire on Button 1. The default rate is 20 Hz and can be adjusted from 1–60 Hz.
+- By default Small Fire 1 autofires Button 1 while held. The default rate is 20 Hz and can be adjusted from 1–60 Hz, and autofire can be moved to any output via the config drive.
 - The USB identity is manufacturer `Retro 2040`, product `Competition Pro`, with the board ID as its serial number.
+
+### Status LED
+
+The onboard RGB LED mostly shows the active profile color at full brightness.
+The four profiles are named after their colors: Red, Green, Purple, and
+Yellow.
+
+| LED | Meaning |
+|---|---|
+| Profile color (full) | Active profile: any fire button held |
+| Profile color (dimmed to 20%) | Slow compatibility polling mode active |
+| Profile color pulsing | An autofire input is held; pulse rate matches the configured autofire rate |
+| Blue (solid) | Configuration drive is active |
+| Cyan | Firmware update selected (hold Small Fire 1 + 2 past 6 s, before release) |
+| Three red flashes | A rejected or incomplete `JOYSTICK.INI` before reboot |
+| Off | Idle, or LED feedback toggled off |
 
 ### Button gestures
 
-Gestures use the physical fire buttons. Hold a pair for 500 ms where noted.
+Gestures use the physical fire buttons and cannot be remapped. Hold a pair for
+500 ms where noted.
 
 | Buttons held | Action |
 |---|---|
@@ -83,19 +122,105 @@ Gestures use the physical fire buttons. Hold a pair for 500 ms where noted.
 | Big Fire 2 + Small Fire 1 | Increase autofire rate |
 | Big Fire 1 + Small Fire 2 | Select slow compatibility mode |
 | Big Fire 2 + Small Fire 2 | Select fast mode |
-| Small Fire 1 + Small Fire 2 for 3 seconds | Enter BOOTSEL update mode |
+| Small Fire 1 + Small Fire 2 for 3 seconds, release | Enter configuration mode (USB drive with `JOYSTICK.INI`) |
+| Small Fire 1 + Small Fire 2 for 6 seconds, release | Enter BOOTSEL update mode |
+| Small Fire 1 + Small Fire 2 + joystick Up | Select Red profile after 500 ms |
+| Small Fire 1 + Small Fire 2 + joystick Down | Select Green profile after 500 ms |
+| Small Fire 1 + Small Fire 2 + joystick Left | Select Purple profile after 500 ms |
+| Small Fire 1 + Small Fire 2 + joystick Right | Select Yellow profile after 500 ms |
 | Big Fire 1 + Big Fire 2 for 3 seconds | Toggle normal LED feedback |
-| All four fire buttons for 3 seconds | Restore fast mode, 20 Hz autofire, and LED feedback |
+| All four fire buttons for 3 seconds | Select Red, reset only its mapping to factory defaults, and reset global settings |
 
 Settings are saved and restored after reboot. Releasing the buttons cancels a gesture before its hold time is reached.
 
-## Configuration
+## Configuring the fire buttons
+
+The four fire buttons can be remapped independently for each button-mapping
+profile without rebuilding the firmware. Profiles can send gamepad buttons,
+keyboard keys, or keyboard modifiers, and any mapped button can use autofire.
+
+1. Hold **Small Fire 1 + Small Fire 2 for 3 seconds**, then release. While
+   holding, the status LED lights once config mode is selected. On release the
+   board reboots into configuration mode: the joystick is disconnected and a
+   USB drive appears. (Holding for 6 seconds and releasing instead reboots into
+   BOOTSEL update mode.)
+2. Open the `JOYSTICK.INI` file and edit the four `buttonN=` lines in each
+   color section:
+
+   ```ini
+   [RED]
+   button1=JOY1            ; Button 1 (default for Big Fire 1)
+   button2=JOY2            ; Button 2 (default for Big Fire 2)
+   button3=JOY1:AUTOFIRE   ; autofire Button 1 (default for Small Fire 1)
+   button4=JOY3            ; Button 3 (default for Small Fire 2)
+
+   [GREEN]
+   button1=JOY1
+   button2=JOY2
+   button3=JOY1:AUTOFIRE
+   button4=JOY3
+
+   [PURPLE]
+   button1=JOY1
+   button2=JOY2
+   button3=JOY1:AUTOFIRE
+   button4=JOY3
+
+   [YELLOW]
+   button1=JOY1
+   button2=JOY2
+   button3=JOY1:AUTOFIRE
+   button4=JOY3
+   ```
+
+   Valid outputs:
+
+   | Group | Codes |
+   |---|---|
+   | Gamepad buttons | `JOY1` .. `JOY4` |
+   | Letters | `A` .. `Z` |
+   | Digits | `0` .. `9` |
+   | Keys | `ENTER`, `ESC`, `BACKSPACE`, `TAB`, `SPACE` |
+   | Function keys | `F1` .. `F12` |
+   | Modifiers | `SHIFT`, `CTRL`, `ALT` |
+   | Off | `NONE` |
+
+3. Save and unmount (or eject) the drive. After about a second the board
+   applies the new mapping and reboots automatically into joystick mode. The
+   LED remains solid blue while the configuration drive is active.
+
+Notes:
+
+- Names and values are case-insensitive; lines starting with `;` are comments;
+  `\\r\\n` or `\\n` line endings are accepted.
+- All four profile sections and their `buttonN=` lines must be present and valid,
+  otherwise the previous configuration is kept.
+- `:AUTOFIRE` (case-insensitive) repeats the virtual press at the configured
+  rate while that fire button is held. Gamepad buttons and keys both support it.
+- Autofire takes priority: if a button with `:AUTOFIRE` and a normal button
+  share the same output (e.g. `SPACE:AUTOFIRE` and `SPACE`, or `JOY1:AUTOFIRE`
+  and `JOY1`), the shared output follows only the autofire pattern while the
+  autofire button is held — the held normal button is suppressed.
+- The board reboots after an eject. If `JOYSTICK.INI` has changed the mapping,
+  the new settings are used; an unchanged file exits config mode without an
+  error indication.
+- An unreadable or incomplete file (still being written, or malformed) keeps
+  the old mapping. After the save becomes idle or the drive is unmounted, the
+  status LED flashes red three times and the board reboots into joystick mode.
+- While the configuration drive is open the gamepad/keyboard are disconnected;
+  joystick directions and fire buttons have no joystick or keyboard effect.
+  Holding Small Fire 1 + Small Fire 2 for 3 seconds while in the drive
+  immediately exits configuration mode and reboots into normal joystick mode.
+  Unsaved edits are discarded. The six-second BOOTSEL gesture is available
+  from normal joystick mode only.
+
+## Build-time configuration
 
 Edit [`config.h`](config.h) before building to change:
 
-- GPIO assignments and USB button mappings
-- Autofire input, target button, rate limits, and default rate
-- BOOTSEL gesture buttons and hold time
+- GPIO assignments
+- Autofire rate limits and default rate
+- Config/firmware gesture buttons and hold times
 - Fast/slow report intervals and debounce time
 - LED colors and USB identity
 
@@ -111,15 +236,17 @@ evtest
 jstest /dev/input/jsX
 ```
 
-Check the two axes and all three buttons. The exact `/dev/input/jsX` number depends on other controllers connected to the system. SDL applications and emulators should recognize the device as a generic joystick, although an emulator may need its joystick mapping configured once.
+Check the two axes and all four buttons. The exact `/dev/input/jsX` number depends on other controllers connected to the system. SDL applications and emulators should recognize the device as a generic joystick, although an emulator may need its joystick mapping configured once.
 
 Host-side logic tests do not require the Pico SDK or a connected board:
 
 ```sh
-cmake -S tests -B build-host-tests
-cmake --build build-host-tests
-ctest --test-dir build-host-tests --output-on-failure
+./build-host-tests.sh
 ```
+
+The test script builds the host test executable with CMake and runs it
+directly. This avoids relying on a Python `ctest` wrapper that may be installed
+ahead of the native CMake tools on `PATH`.
 
 ## Notes
 

@@ -4,6 +4,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "config.h"
+
 typedef enum {
     INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT,
     INPUT_BIG_FIRE_1, INPUT_BIG_FIRE_2, INPUT_SMALL_FIRE_1, INPUT_SMALL_FIRE_2,
@@ -22,6 +24,13 @@ typedef struct {
     uint8_t buttons;
 } joystick_report_t;
 
+/* Standard 8-byte HID keyboard report: modifier, reserved, then six keycodes. */
+typedef struct {
+    uint8_t modifier;
+    uint8_t reserved;
+    uint8_t keycodes[6];
+} joystick_keyboard_report_t;
+
 typedef struct {
     bool active;
     bool pulse;
@@ -38,19 +47,36 @@ typedef struct {
     bool mode_slow;
     bool led_held;
     bool led_triggered;
+    bool profile_held;
+    bool profile_triggered;
+    uint8_t profile_index;
+    bool suppress_output;
     uint32_t rate_next_us;
     uint32_t rate_start_us;
     uint32_t mode_start_us;
     uint32_t led_start_us;
+    uint32_t profile_start_us;
     uint8_t release_mask;
 } gesture_state_t;
 
+typedef enum {
+    BOOT_MODE_NONE = 0,   /* No mode selected (released too early). */
+    BOOT_MODE_CONFIG,     /* Release after JOY_SPECIAL_HOLD_MS: config drive. */
+    BOOT_MODE_FIRMWARE    /* Release after 6s: firmware update (BOOTSEL). */
+} boot_mode_action_t;
+
 typedef struct {
     bool held;
-    bool release_pending;
+    bool fired;
+    uint8_t mode;          /* Live selection while held: BOOT_MODE_* value. */
     uint32_t hold_start_us;
-    uint32_t release_start_us;
-} update_shortcut_t;
+} boot_mode_state_t;
+
+typedef struct {
+    bool held;
+    bool triggered;
+    uint32_t hold_start_us;
+} config_exit_state_t;
 
 typedef struct {
     bool held;
@@ -67,6 +93,11 @@ typedef struct {
     joystick_speed_t speed;
     uint8_t rate_hz;
     bool led_enabled;
+    uint8_t button_code[4];
+    uint8_t autofire_mask;
+    uint8_t profiles[4][4];
+    uint8_t profile_autofire_mask[4];
+    uint8_t active_profile;
 } joystick_settings_t;
 
 uint8_t joystick_gpio_snapshot(uint32_t gpio_levels);
@@ -74,20 +105,31 @@ void input_filter_init(input_filter_t *filter, uint8_t raw);
 uint8_t input_filter_update(input_filter_t *filter, uint8_t raw, uint32_t now_us);
 void autofire_state_init(autofire_state_t *state);
 void autofire_state_update(autofire_state_t *state, bool enabled, uint32_t now_us);
+bool joystick_autofire_enabled(uint8_t inputs, const joystick_settings_t *settings);
 uint32_t joystick_report_interval_us(joystick_speed_t speed, bool autofire_active);
 joystick_report_t joystick_make_report(autofire_state_t *state, uint8_t inputs,
-                                       uint32_t now_us,
-                                       bool suppress_autofire_target_direct);
+                                       const joystick_settings_t *settings,
+                                       bool suppress_fire);
+joystick_keyboard_report_t joystick_make_keyboard_report(autofire_state_t *state,
+                                       uint8_t inputs,
+                                       const joystick_settings_t *settings,
+                                       bool suppress_fire);
 bool joystick_direct_activity(uint8_t inputs, bool ignore_fire_buttons);
+bool joystick_status_led_active(bool direct_active, bool autofire_held,
+                                bool autofire_pulse);
+bool joystick_post_reboot_guard_active(bool guard_active, uint8_t inputs);
 bool joystick_gesture_step(gesture_state_t *state, uint8_t inputs,
                            uint32_t now_us, joystick_settings_t *settings);
-bool update_shortcut_step(update_shortcut_t *state, bool both_pressed,
-                          uint32_t now_us);
+boot_mode_action_t boot_mode_step(boot_mode_state_t *state, bool both_pressed,
+                                  uint32_t now_us);
+bool config_mode_exit_step(config_exit_state_t *state, bool both_pressed,
+                           uint32_t now_us);
 bool factory_reset_step(factory_reset_state_t *state, bool all_pressed,
                         uint32_t now_us);
 bool joystick_report_due(uint32_t *next_us, uint32_t now_us, uint32_t interval_us);
 bool joystick_input_pressed(uint8_t inputs, input_id_t input);
 uint8_t joystick_input_gpio(input_id_t input);
 bool joystick_gpio_pressed(uint8_t inputs, uint8_t gpio);
+input_id_t joystick_fire_input(unsigned fire_button);
 
 #endif

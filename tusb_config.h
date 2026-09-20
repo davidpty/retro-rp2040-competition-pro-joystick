@@ -16,10 +16,11 @@ extern "C" {
 #define CFG_TUD_ENABLED        1
 #define CFG_TUD_ENDPOINT0_SIZE 64
 
-#define CFG_TUD_HID            1
+#define CFG_TUD_HID            2
 #define CFG_TUD_HID_EP_BUFSIZE 16
-#define CFG_TUD_HID_EP_OUT     0
-#define CFG_TUD_HID_EP_IN      0x81
+
+#define CFG_TUD_MSC            1
+#define CFG_TUD_MSC_EP_BUFSIZE 64
 
 #ifdef __cplusplus
 }

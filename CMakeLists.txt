@@ -18,7 +18,11 @@ pico_sdk_init()
 
 add_executable(rp2040_zero_hid_joystick
     src/main.c
+    src/ini_config.c
     src/joystick.c
+    src/led_color.c
+    src/msc_disk.c
+    src/msc_volume.c
     src/settings.c
     src/status_led.c
     src/usb_descriptors.c

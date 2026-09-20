@@ -25,7 +25,7 @@ uint8_t const *tud_descriptor_device_cb(void) {
     return (uint8_t const *)&desc_device;
 }
 
-/* Two signed 8-bit axes followed by three buttons and five padding bits. */
+/* Gamepad report: two signed 8-bit axes, four buttons, four padding bits. */
 uint8_t const desc_hid_report[] = {
     HID_USAGE_PAGE(HID_USAGE_PAGE_DESKTOP),
     HID_USAGE(HID_USAGE_DESKTOP_JOYSTICK),
@@ -40,37 +40,80 @@ uint8_t const desc_hid_report[] = {
         HID_INPUT(HID_DATA | HID_VARIABLE | HID_ABSOLUTE),
         HID_USAGE_PAGE(HID_USAGE_PAGE_BUTTON),
         HID_USAGE_MIN(1),
-        HID_USAGE_MAX(3),
+        HID_USAGE_MAX(4),
         HID_LOGICAL_MIN(0),
         HID_LOGICAL_MAX(1),
         HID_REPORT_SIZE(1),
-        HID_REPORT_COUNT(3),
+        HID_REPORT_COUNT(4),
         HID_INPUT(HID_DATA | HID_VARIABLE | HID_ABSOLUTE),
-        HID_REPORT_SIZE(5),
+        HID_REPORT_SIZE(4),
         HID_REPORT_COUNT(1),
         HID_INPUT(HID_CONSTANT),
     HID_COLLECTION_END
 };
 
+/* Keyboard report: 8 bytes, no report ID (TUD_HID_REPORT_DESC_KEYBOARD emits
+ * keycode report ids; pass no arg so the device has none). */
+uint8_t const desc_kbd_report[] = {
+    TUD_HID_REPORT_DESC_KEYBOARD()
+};
+
 uint8_t const *tud_hid_descriptor_report_cb(uint8_t instance) {
-    (void)instance;
-    return desc_hid_report;
+    return instance == 0 ? desc_hid_report : desc_kbd_report;
 }
 
-enum { ITF_NUM_HID, ITF_NUM_TOTAL };
-#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + TUD_HID_DESC_LEN)
+enum {
+    ITF_NUM_HID,
+    ITF_NUM_HID_KEY,
+    ITF_NUM_MSC,
+    ITF_NUM_TOTAL
+};
+
+enum {
+    EP_HID_JOY   = 0x81,
+    EP_HID_KEY   = 0x82,
+    EP_MSC_OUT   = 0x03,
+    EP_MSC_IN    = 0x83
+};
+
+#define CONFIG_TOTAL_LEN (TUD_CONFIG_DESC_LEN + 2u * TUD_HID_DESC_LEN)
+#define CONFIG_MSC_TOTAL_LEN (CONFIG_TOTAL_LEN + TUD_MSC_DESC_LEN)
 
 uint8_t const desc_configuration[] = {
-    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN,
-                          0, 100),
+    TUD_CONFIG_DESCRIPTOR(1, 2, 0, CONFIG_TOTAL_LEN, 0, 100),
     TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE,
-                       sizeof(desc_hid_report), CFG_TUD_HID_EP_IN,
-                       CFG_TUD_HID_EP_BUFSIZE, 1)
+                       sizeof(desc_hid_report), EP_HID_JOY,
+                       CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID_KEY, 0, HID_ITF_PROTOCOL_NONE,
+                       sizeof(desc_kbd_report), EP_HID_KEY,
+                       CFG_TUD_HID_EP_BUFSIZE, 1),
 };
+
+uint8_t const desc_configuration_msc[] = {
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_MSC_TOTAL_LEN, 0, 100),
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID, 0, HID_ITF_PROTOCOL_NONE,
+                       sizeof(desc_hid_report), EP_HID_JOY,
+                       CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_HID_DESCRIPTOR(ITF_NUM_HID_KEY, 0, HID_ITF_PROTOCOL_NONE,
+                       sizeof(desc_kbd_report), EP_HID_KEY,
+                       CFG_TUD_HID_EP_BUFSIZE, 1),
+    TUD_MSC_DESCRIPTOR(ITF_NUM_MSC, 0, EP_MSC_OUT, EP_MSC_IN,
+                       CFG_TUD_MSC_EP_BUFSIZE),
+};
+
+static bool config_drive;
+
+void usb_descriptors_set_config_drive(bool enable) {
+    config_drive = enable;
+}
+
+bool usb_descriptors_config_drive(void) {
+    return config_drive;
+}
 
 uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
     (void)index;
-    return desc_configuration;
+    return config_drive ? desc_configuration_msc : desc_configuration;
 }
 
 enum { STRID_LANGID, STRID_MANUFACTURER, STRID_PRODUCT, STRID_SERIAL };
