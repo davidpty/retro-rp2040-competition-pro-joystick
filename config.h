@@ -80,7 +80,7 @@ typedef enum {
 /* Cyan is reserved for the configuration drive so it remains bright and
  * clearly distinct from the profile colors. Firmware update uses a bright,
  * unmistakable magenta. */
-#define JOY_LED_CONFIG_COLOR   JOY_LED_RGB(0, 200, 255)  /* Cyan: config mode selected */
+#define JOY_LED_CONFIG_COLOR   JOY_LED_RGB(0, 155, 255)  /* Cyan: config mode selected */
 #define JOY_LED_FIRMWARE_COLOR JOY_LED_RGB(255, 0, 255)  /* Magenta: firmware update selected */
 #define JOY_LED_WARNING_COLOR  JOY_LED_RGB(255, 0, 0  )  /* Red: rejected INI blinker */
 
