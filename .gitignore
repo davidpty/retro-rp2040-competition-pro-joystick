@@ -1,6 +1,8 @@
 build/
 build-host-tests/
 build-release/
+codegraph.html
+.codegraph
 *.uf2
 *.elf
 *.bin
