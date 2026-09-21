@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <string.h>
 
-_Static_assert(sizeof(joystick_settings_record_t) == 148,
+_Static_assert(sizeof(joystick_settings_record_t) == 212,
                "Settings record layout changed unexpectedly");
 
 static uint32_t crc32(const void *data, size_t length) {
@@ -80,7 +80,9 @@ joystick_settings_record_t joystick_settings_record_make(
 }
 
 static bool binding_valid(const ini_binding_t *binding) {
-    if (binding->autofire > 1 || binding->modifier & ~0x07u) return false;
+    if (binding->autofire > 1 || binding->modifier & ~0x07u ||
+        binding->autofire_delay_ms > JOY_AUTOFIRE_MAX_DELAY_MS ||
+        (!binding->autofire && binding->autofire_delay_ms != 0)) return false;
     switch (binding->type) {
         case INI_BIND_NONE: return binding->value == 0 && binding->modifier == 0;
         case INI_BIND_GAMEPAD: return binding->value >= 1 && binding->value <= 4 && binding->modifier == 0;

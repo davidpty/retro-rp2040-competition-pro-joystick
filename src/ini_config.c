@@ -68,6 +68,25 @@ static bool parse_binding_value(const uint8_t *value, size_t length,
         binding->autofire = 1;
         end -= 9;
         while (end && is_space(value[end - 1])) --end;
+    } else {
+        const char *suffix = ":AUTOFIRE:";
+        const size_t suffix_len = 10;
+        size_t suffix_start = end;
+        while (suffix_start && value[suffix_start - 1] >= '0' && value[suffix_start - 1] <= '9') --suffix_start;
+        if (suffix_start >= suffix_len && value[suffix_start - suffix_len] == ':' &&
+            ieq_range(value, suffix_start - suffix_len + 1, suffix + 1, suffix_len - 1)) {
+            if (!allow_autofire || suffix_start == end) return false;
+            uint32_t delay = 0;
+            for (size_t i = suffix_start; i < end; ++i) {
+                delay = delay * 10u + (uint32_t)(value[i] - '0');
+                if (delay > JOY_AUTOFIRE_MAX_DELAY_MS) return false;
+            }
+            if (delay == 0) return false;
+            binding->autofire = 1;
+            binding->autofire_delay_ms = (uint16_t)delay;
+            end = suffix_start - suffix_len;
+            while (end && is_space(value[end - 1])) --end;
+        }
     }
     if (!end) return false;
 
@@ -225,8 +244,13 @@ bool ini_config_binding_format(const ini_binding_t *binding, char *out, size_t c
         if (binding->modifier & 0x04) used += (size_t)snprintf(prefix + used, sizeof(prefix) - used, "ALT+");
         if (binding->value == INI_CODE_NONE && used) prefix[used - 1] = '\0';
     }
-    int n = snprintf(out, capacity, "%s%s%s", prefix, name,
-                     binding->autofire ? ":AUTOFIRE" : "");
+    char suffix[32] = "";
+    if (binding->autofire) {
+        if (binding->autofire_delay_ms) snprintf(suffix, sizeof(suffix), ":AUTOFIRE:%u",
+                                                 (unsigned)binding->autofire_delay_ms);
+        else snprintf(suffix, sizeof(suffix), ":AUTOFIRE");
+    }
+    int n = snprintf(out, capacity, "%s%s%s", prefix, name, suffix);
     return n >= 0 && (size_t)n < capacity;
 }
 uint8_t ini_config_joy_button(uint8_t code) { return code >= INI_CODE_JOY1 && code <= INI_CODE_JOY4 ? code : 0; }

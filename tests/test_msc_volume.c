@@ -13,9 +13,9 @@ static void test_volume_round_trip(void) {
     joystick_settings_t settings;
     joystick_settings_defaults(&settings);
     settings.profiles[0].button[0] =
-        (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A, 0x02, 0};
+        (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A, 0x02, 0, 0};
     settings.profiles[0].direction[0] =
-        (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A + 22, 0, 0};
+        (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A + 22, 0, 0, 0};
     msc_volume_rebuild(&volume, &settings);
     assert(volume.ini_size > MSC_DISK_BLOCK_SIZE);
     uint8_t data[MSC_DISK_BLOCK_SIZE * 2];

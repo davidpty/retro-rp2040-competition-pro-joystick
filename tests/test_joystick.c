@@ -27,8 +27,8 @@ static void test_defaults_and_axis_reports(void) {
     assert(report.buttons == 1);
 
     profile = &settings.profiles[1];
-    profile->direction[INPUT_UP] = (ini_binding_t){INI_BIND_AXIS, INPUT_DOWN, 0, 0};
-    profile->direction[INPUT_DOWN] = (ini_binding_t){INI_BIND_AXIS, INPUT_UP, 0, 0};
+    profile->direction[INPUT_UP] = (ini_binding_t){INI_BIND_AXIS, INPUT_DOWN, 0, 0, 0};
+    profile->direction[INPUT_DOWN] = (ini_binding_t){INI_BIND_AXIS, INPUT_UP, 0, 0, 0};
     report = joystick_make_report(&state, PRESSED(INPUT_UP), profile, false);
     assert(report.y == 127);
     report = joystick_make_report(&state, PRESSED(INPUT_UP) | PRESSED(INPUT_DOWN), profile, false);
@@ -39,9 +39,9 @@ static void test_unified_keyboard_bindings(void) {
     joystick_settings_t settings;
     joystick_settings_defaults(&settings);
     joystick_profile_t *profile = &settings.profiles[0];
-    profile->button[0] = (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A, 0x02, 0};
-    profile->button[1] = (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A + 1, 0x05, 0};
-    profile->direction[0] = (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A + 22, 0, 0};
+    profile->button[0] = (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A, 0x02, 0, 0};
+    profile->button[1] = (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A + 1, 0x05, 0, 0};
+    profile->direction[0] = (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A + 22, 0, 0, 0};
     autofire_state_t state = {0};
     joystick_keyboard_report_t report = joystick_make_keyboard_report(
         &state, PRESSED(INPUT_BIG_FIRE_1) | PRESSED(INPUT_BIG_FIRE_2) |
@@ -60,15 +60,33 @@ static void test_autofire_all_input_types(void) {
     autofire_state_t state = {0};
     uint8_t input = PRESSED(INPUT_BIG_FIRE_1) | PRESSED(INPUT_UP);
     assert(joystick_autofire_enabled(input, profile));
-    autofire_state_update(&state, true, 1000);
+    autofire_state_update(&state, input, profile, 1000);
     assert(joystick_make_report(&state, input, profile, false).buttons == 1);
     uint32_t half = 500000u / JOY_AUTOFIRE_DEFAULT_HZ;
-    autofire_state_update(&state, true, 1000 + half);
+    autofire_state_update(&state, input, profile, 1000 + half);
     assert(joystick_make_report(&state, input, profile, false).buttons == 0);
-    profile->button[0] = (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A, 0x02, 1};
+    profile->button[0] = (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A, 0x02, 1, 0};
     autofire_state_init(&state);
-    autofire_state_update(&state, true, 2000);
+    autofire_state_update(&state, PRESSED(INPUT_BIG_FIRE_1), profile, 2000);
     assert(joystick_make_keyboard_report(&state, PRESSED(INPUT_BIG_FIRE_1), profile, false).modifier == 0x02);
+}
+
+static void test_delayed_autofire(void) {
+    joystick_settings_t settings;
+    joystick_settings_defaults(&settings);
+    joystick_profile_t *profile = &settings.profiles[0];
+    profile->button[0].autofire = 1;
+    profile->button[0].autofire_delay_ms = 100;
+    autofire_state_t state = {0};
+    uint8_t input = PRESSED(INPUT_BIG_FIRE_1);
+    autofire_state_update(&state, input, profile, 1000);
+    assert(joystick_make_report(&state, input, profile, false).buttons == 1);
+    autofire_state_update(&state, input, profile, 1000 + 99999);
+    assert(joystick_make_report(&state, input, profile, false).buttons == 1);
+    autofire_state_update(&state, input, profile, 101000);
+    assert(joystick_make_report(&state, input, profile, false).buttons == 1);
+    autofire_state_update(&state, input, profile, 101000 + 500000 / JOY_AUTOFIRE_DEFAULT_HZ);
+    assert(joystick_make_report(&state, input, profile, false).buttons == 0);
 }
 
 static void test_profile_gesture(void) {
@@ -106,9 +124,9 @@ static void test_settings_persistence(void) {
     joystick_settings_t first_settings, second_settings, loaded;
     joystick_settings_defaults(&first_settings);
     joystick_settings_defaults(&second_settings);
-    first_settings.profiles[2].button[0] = (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A, 0x02, 0};
+    first_settings.profiles[2].button[0] = (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A, 0x02, 0, 0};
     second_settings.active_profile = 3;
-    second_settings.profiles[3].direction[0] = (ini_binding_t){INI_BIND_AXIS, INPUT_DOWN, 0, 1};
+    second_settings.profiles[3].direction[0] = (ini_binding_t){INI_BIND_AXIS, INPUT_DOWN, 0, 1, 0};
     joystick_settings_record_t first = joystick_settings_record_make(&first_settings, 4);
     joystick_settings_record_t second = joystick_settings_record_make(&second_settings, 5);
     unsigned slot;
@@ -123,6 +141,7 @@ int test_joystick_main(void) {
     test_defaults_and_axis_reports();
     test_unified_keyboard_bindings();
     test_autofire_all_input_types();
+    test_delayed_autofire();
     test_profile_gesture();
     test_factory_reset_scope();
     test_settings_persistence();

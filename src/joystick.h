@@ -40,7 +40,10 @@ typedef struct {
 typedef struct {
     bool active;
     bool pulse;
+    uint8_t ready_mask;
+    uint8_t started_mask;
     uint32_t last_toggle_us;
+    uint32_t input_started_at_us[INPUT_COUNT];
     uint16_t hz;
 } autofire_state_t;
 
@@ -107,7 +110,8 @@ uint8_t joystick_gpio_snapshot(uint32_t gpio_levels);
 void input_filter_init(input_filter_t *filter, uint8_t raw);
 uint8_t input_filter_update(input_filter_t *filter, uint8_t raw, uint32_t now_us);
 void autofire_state_init(autofire_state_t *state);
-void autofire_state_update(autofire_state_t *state, bool enabled, uint32_t now_us);
+void autofire_state_update(autofire_state_t *state, uint8_t inputs,
+                           const joystick_profile_t *profile, uint32_t now_us);
 bool joystick_autofire_enabled(uint8_t inputs, const joystick_profile_t *profile);
 uint32_t joystick_report_interval_us(joystick_speed_t speed, bool autofire_active);
 joystick_report_t joystick_make_report(autofire_state_t *state, uint8_t inputs,

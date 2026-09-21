@@ -115,7 +115,36 @@ void autofire_state_init(autofire_state_t *state) {
     *state = (autofire_state_t){ .hz = JOY_AUTOFIRE_DEFAULT_HZ };
 }
 
-void autofire_state_update(autofire_state_t *state, bool enabled, uint32_t now_us) {
+static const ini_binding_t *input_binding(const joystick_profile_t *profile,
+                                          unsigned input) {
+    return input < JOY_DIRECTION_COUNT
+        ? &profile->direction[input] : &profile->button[input - JOY_DIRECTION_COUNT];
+    return &profile->button[0];
+}
+
+void autofire_state_update(autofire_state_t *state, uint8_t inputs,
+                           const joystick_profile_t *profile, uint32_t now_us) {
+    uint8_t held_mask = 0;
+    state->ready_mask = 0;
+    for (unsigned input = 0; input < INPUT_COUNT; ++input) {
+        const ini_binding_t *binding = input_binding(profile, input);
+        uint8_t mask = (uint8_t)(1u << input);
+        if (!binding->autofire || !(inputs & mask)) {
+            state->started_mask &= (uint8_t)~mask;
+            continue;
+        }
+        held_mask |= mask;
+        if (!(state->started_mask & mask)) {
+            state->started_mask |= mask;
+            state->input_started_at_us[input] = now_us;
+        }
+        if ((uint32_t)(now_us - state->input_started_at_us[input]) >=
+            (uint32_t)binding->autofire_delay_ms * 1000u) {
+            state->ready_mask |= mask;
+        }
+    }
+    state->started_mask &= held_mask;
+    bool enabled = state->ready_mask != 0;
     uint32_t hz = state->hz ? state->hz : JOY_AUTOFIRE_DEFAULT_HZ;
     const uint32_t half_period_us = 500000u / hz;
     if (!enabled) {
@@ -132,13 +161,6 @@ void autofire_state_update(autofire_state_t *state, bool enabled, uint32_t now_u
             state->last_toggle_us += periods * half_period_us;
         }
     }
-}
-
-static const ini_binding_t *input_binding(const joystick_profile_t *profile,
-                                          unsigned input) {
-    return input < JOY_DIRECTION_COUNT
-        ? &profile->direction[input] : &profile->button[input - JOY_DIRECTION_COUNT];
-    return &profile->button[0];
 }
 
 bool joystick_autofire_enabled(uint8_t inputs, const joystick_profile_t *profile) {
@@ -170,11 +192,13 @@ static bool binding_effective(const autofire_state_t *state,
                               unsigned input, uint8_t inputs) {
     const ini_binding_t *binding = input_binding(profile, input);
     if (!joystick_input_pressed(inputs, (input_id_t)input)) return false;
-    if (binding->autofire) return state->pulse;
+        if (!(state->ready_mask & (1u << input))) return true;
+        if (binding->autofire) return state->pulse;
     for (unsigned other = 0; other < INPUT_COUNT; ++other) {
         const ini_binding_t *candidate = input_binding(profile, other);
         if (other != input && candidate->autofire &&
             joystick_input_pressed(inputs, (input_id_t)other) &&
+            (state->ready_mask & (1u << other)) &&
             binding_equal(candidate, binding)) {
             return false;
         }

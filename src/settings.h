@@ -8,7 +8,7 @@
 #include "joystick.h"
 
 #define JOY_SETTINGS_MAGIC   0x4a535447u
-#define JOY_SETTINGS_VERSION 9u
+#define JOY_SETTINGS_VERSION 10u
 
 typedef struct {
     uint32_t magic;

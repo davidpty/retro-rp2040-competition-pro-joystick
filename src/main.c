@@ -302,7 +302,7 @@ int main(void) {
         bool autofire_held = !post_reboot_input_guard &&
                              joystick_autofire_enabled(inputs, active_profile);
         uint32_t interval_us = joystick_report_interval_us(settings.speed, autofire_held);
-        autofire_state_update(&autofire, autofire_held, now_us);
+        autofire_state_update(&autofire, inputs, active_profile, now_us);
         bool suppress_fire_output = gesture_state.suppress_output ||
                                     factory_reset.triggered;
         if (!config_drive_enabled && !post_reboot_input_guard) {
@@ -337,7 +337,7 @@ int main(void) {
             !factory_reset_led_holdoff) {
             bool direct_active = joystick_direct_activity(inputs, autofire_adjusting);
             bool led_active = joystick_status_led_active(direct_active,
-                                                         autofire_held,
+                                                         autofire.active,
                                                          autofire.pulse);
             status_led_update(led_active,
                               settings.led_enabled,

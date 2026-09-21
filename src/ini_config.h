@@ -23,6 +23,7 @@ typedef struct {
     uint8_t value;
     uint8_t modifier;
     uint8_t autofire;
+    uint16_t autofire_delay_ms;
 } ini_binding_t;
 
 /* Persistent, compact button-output codes. Codes are validated by

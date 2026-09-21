@@ -138,7 +138,10 @@ Settings are saved and restored after reboot. Releasing the buttons cancels a ge
 The four fire buttons and four joystick directions can be remapped independently
 for each button-mapping profile without rebuilding the firmware. Profiles can
 send joystick directions, gamepad buttons, keyboard keys, or keyboard
-combinations, and any mapped input can use autofire.
+combinations, and any mapped input can use autofire. `:AUTOFIRE` starts pulsing
+immediately; `:AUTOFIRE:500` keeps the output held normally for 500 ms,
+then starts pulsing while the input remains held. Delayed autofire values may
+range from 1 to 60000 ms.
 
 1. Hold **Small Fire 1 + Small Fire 2 for 3 seconds**, then release. While
    holding, the status LED lights once config mode is selected. On release the
@@ -189,6 +192,9 @@ combinations, and any mapped input can use autofire.
    left=LEFT
    right=RIGHT
    ```
+
+   A delayed autofire mapping can be written as, for example,
+   `button1=JOY1:AUTOFIRE:500`.
 
    Valid outputs:
 

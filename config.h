@@ -22,6 +22,7 @@
 #define JOY_AUTOFIRE_DEFAULT_HZ   20  /* Used only when flash settings are invalid */
 #define JOY_AUTOFIRE_MIN_HZ        1
 #define JOY_AUTOFIRE_MAX_HZ       60
+#define JOY_AUTOFIRE_MAX_DELAY_MS 60000
 #define JOY_AUTOFIRE_REPEAT_MS   500  /* Rate adjustment repeat interval */
 #define JOY_GESTURE_ACTIVATION_DELAY_MS 500  /* Hold before rate/mode action */
 #define JOY_SPECIAL_HOLD_MS        3000  /* Special gesture hold time */

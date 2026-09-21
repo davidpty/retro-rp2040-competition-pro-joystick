@@ -9,7 +9,7 @@
 
 static const char config_text[] =
     "[RED]\nup=UP\ndown=DOWN\nleft=LEFT\nright=RIGHT\n"
-    "button1=SHIFT+A\nbutton2=JOY1\nbutton3=CTRL+ALT+B:AUTOFIRE\nbutton4=NONE\n"
+    "button1=SHIFT+A\nbutton2=JOY1\nbutton3=CTRL+ALT+B:AUTOFIRE:250\nbutton4=NONE\n"
     "[GREEN]\nup=W\ndown=S\nleft=A\nright=D\n"
     "button1=JOY2\nbutton2=SPACE\nbutton3=SHIFT\nbutton4=NONE\n"
     "[PURPLE]\nup=JOY1\ndown=JOY2\nleft=UP:AUTOFIRE\nright=RIGHT\n"
@@ -24,7 +24,8 @@ static void test_parse_bindings(void) {
     assert(bindings[0][4].type == INI_BIND_KEYBOARD &&
            bindings[0][4].modifier == 0x02 && bindings[0][4].value == INI_CODE_A);
     assert(bindings[0][6].modifier == (0x01 | 0x04) &&
-           bindings[0][6].value == INI_CODE_A + 1 && bindings[0][6].autofire);
+           bindings[0][6].value == INI_CODE_A + 1 && bindings[0][6].autofire &&
+           bindings[0][6].autofire_delay_ms == 250);
     assert(bindings[1][0].type == INI_BIND_KEYBOARD &&
            ini_config_keycode(bindings[1][0].value) == 0x1a); /* W */
     assert(bindings[2][2].type == INI_BIND_AXIS && bindings[2][2].autofire);
@@ -32,10 +33,13 @@ static void test_parse_bindings(void) {
 
 static void test_format_bindings(void) {
     char text[64];
-    ini_binding_t binding = {INI_BIND_KEYBOARD, INI_CODE_A, 0x02, 1};
+    ini_binding_t binding = {INI_BIND_KEYBOARD, INI_CODE_A, 0x02, 1, 0};
     assert(ini_config_binding_format(&binding, text, sizeof(text)));
     assert(strcmp(text, "SHIFT+A:AUTOFIRE") == 0);
-    binding = (ini_binding_t){INI_BIND_AXIS, 1, 0, 0};
+    binding.autofire_delay_ms = 1250;
+    assert(ini_config_binding_format(&binding, text, sizeof(text)));
+    assert(strcmp(text, "SHIFT+A:AUTOFIRE:1250") == 0);
+    binding = (ini_binding_t){INI_BIND_AXIS, 1, 0, 0, 0};
     assert(ini_config_binding_format(&binding, text, sizeof(text)));
     assert(strcmp(text, "DOWN") == 0);
 }
@@ -47,6 +51,9 @@ static void test_invalid_configs(void) {
     assert(!ini_config_parse((const uint8_t *)invalid, strlen(invalid), bindings));
     invalid = "[RED]\nup=UP:AUTOFIRE\ndown=DOWN\nleft=LEFT\nright=RIGHT\n"
               "button1=A\nbutton2=B\nbutton3=C\nbutton4=D\n";
+    assert(!ini_config_parse((const uint8_t *)invalid, strlen(invalid), bindings));
+    invalid = "[RED]\nup=UP\ndown=DOWN\nleft=LEFT\nright=RIGHT\n"
+              "button1=A:AUTOFIRE:0\nbutton2=B\nbutton3=C\nbutton4=D\n";
     assert(!ini_config_parse((const uint8_t *)invalid, strlen(invalid), bindings));
 }
 
