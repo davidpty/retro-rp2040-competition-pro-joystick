@@ -97,7 +97,7 @@ static size_t format_ini(const joystick_settings_t *settings,
         "; Joystick: UP DOWN LEFT RIGHT. Gamepad: JOY1 JOY2 JOY3 JOY4.\r\n"
         "; Keyboard: A-Z, 0-9, ENTER ESC BACKSPACE TAB SPACE, or F1-F12.\r\n"
         "; Modifiers: SHIFT CTRL ALT. Combine with +, for example SHIFT+A.\r\n"
-        "; Add :AUTOFIRE to any output, for example JOY1:AUTOFIRE or UP:AUTOFIRE.\r\n"
+        "; Add :AUTOFIRE, :500MS, or :20HZ; MS and HZ may be combined in either order.\r\n"
         "; Reverse axes by swapping values, for example up=DOWN and down=UP.\r\n"
         "\r\n";
     static const char key[][12] = { "button1=", "button2=", "button3=", "button4=",
@@ -120,9 +120,13 @@ static size_t format_ini(const joystick_settings_t *settings,
             const ini_binding_t *binding = i < JOY_BUTTON_COUNT
                 ? &settings->profiles[p].button[i]
                 : &settings->profiles[p].direction[i - JOY_BUTTON_COUNT];
+            unsigned rate_index = i < JOY_BUTTON_COUNT
+                ? JOY_DIRECTION_COUNT + i
+                : i - JOY_BUTTON_COUNT;
             char value[64];
             size_t key_len = strlen(key[i]);
-            if (!ini_config_binding_format(binding, value, sizeof(value))) return 0;
+            if (!ini_config_binding_format_with_rate(
+                    binding, settings->autofire_hz[p][rate_index], value, sizeof(value))) return 0;
             size_t value_len = strlen(value);
             if (used + key_len + value_len + 2 > cap) return 0;
             memcpy(out + used, key[i], key_len); used += key_len;

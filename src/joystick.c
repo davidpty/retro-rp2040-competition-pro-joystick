@@ -123,12 +123,21 @@ static const ini_binding_t *input_binding(const joystick_profile_t *profile,
 }
 
 void autofire_state_update(autofire_state_t *state, uint8_t inputs,
-                           const joystick_profile_t *profile, uint32_t now_us) {
+                           const joystick_profile_t *profile,
+                           const uint8_t fixed_rates[JOY_PROFILE_INPUT_COUNT],
+                           uint32_t now_us) {
+    uint8_t newly_pressed = inputs & (uint8_t)~state->previous_inputs;
+    state->previous_inputs = inputs;
+    state->keyboard_tap_mask = 0;
     uint8_t held_mask = 0;
     state->ready_mask = 0;
     for (unsigned input = 0; input < INPUT_COUNT; ++input) {
         const ini_binding_t *binding = input_binding(profile, input);
         uint8_t mask = (uint8_t)(1u << input);
+        if ((newly_pressed & mask) && binding->type == INI_BIND_KEYBOARD &&
+            !binding->autofire) {
+            state->keyboard_tap_mask |= mask;
+        }
         if (!binding->autofire || !(inputs & mask)) {
             state->started_mask &= (uint8_t)~mask;
             continue;
@@ -144,23 +153,92 @@ void autofire_state_update(autofire_state_t *state, uint8_t inputs,
         }
     }
     state->started_mask &= held_mask;
-    bool enabled = state->ready_mask != 0;
-    uint32_t hz = state->hz ? state->hz : JOY_AUTOFIRE_DEFAULT_HZ;
-    const uint32_t half_period_us = 500000u / hz;
-    if (!enabled) {
-        state->active = false;
-        state->pulse = false;
-    } else if (!state->active) {
-        state->active = true;
-        state->pulse = true;
+    state->pulse_mask &= state->ready_mask;
+    state->fixed_mask = 0;
+    for (unsigned input = 0; input < INPUT_COUNT; ++input) {
+        uint8_t mask = (uint8_t)(1u << input);
+        if ((state->ready_mask & mask) && fixed_rates && fixed_rates[input])
+            state->fixed_mask |= mask;
+    }
+    state->pulse_mask &= state->fixed_mask;
+
+    uint8_t global_ready = state->ready_mask & (uint8_t)~state->fixed_mask;
+    state->global_hz = state->hz ? state->hz : JOY_AUTOFIRE_DEFAULT_HZ;
+    if (!global_ready && state->fixed_mask &&
+        (state->fixed_mask & (uint8_t)(state->fixed_mask - 1u)) == 0) {
+        /* A single fixed-rate input can use the original global pulse path.
+         * This keeps the common one-button case identical to fec9f97 while
+         * the multi-input case below retains independent timers. */
+        unsigned input = 0;
+        while (!(state->fixed_mask & (1u << input))) ++input;
+        state->global_hz = fixed_rates[input];
+        state->fixed_mask = 0;
+        global_ready = state->ready_mask;
+    }
+    if (!global_ready) {
+        state->global_ready_mask = 0;
+        state->global_pulse = false;
+        state->last_toggle_us = now_us;
+    } else if (!state->global_ready_mask) {
+        /* Preserve the original fec9f97 global-pulse behavior for all
+         * autofire bindings without an explicit HZ. */
+        state->global_ready_mask = global_ready;
+        state->global_pulse = true;
         state->last_toggle_us = now_us;
     } else {
-        uint32_t periods = (uint32_t)(now_us - state->last_toggle_us) / half_period_us;
-        if (periods) {
-            if (periods & 1u) state->pulse = !state->pulse;
-            state->last_toggle_us += periods * half_period_us;
+        uint32_t hz = state->global_hz;
+        uint32_t half_period_us = 500000u / hz;
+        uint32_t periods = (uint32_t)(now_us - state->last_toggle_us) /
+                           half_period_us;
+        if (periods & 1u) state->global_pulse = !state->global_pulse;
+        if (periods) state->last_toggle_us += periods * half_period_us;
+        state->global_ready_mask = global_ready;
+    }
+
+    for (unsigned input = 0; input < INPUT_COUNT; ++input) {
+        uint8_t mask = (uint8_t)(1u << input);
+        if (!(state->fixed_mask & mask)) continue;
+        uint32_t hz = fixed_rates && fixed_rates[input] ? fixed_rates[input] : state->hz;
+        if (!hz) hz = JOY_AUTOFIRE_DEFAULT_HZ;
+        uint32_t half_period_us = 500000u / hz;
+        if (!(state->pulse_mask & mask)) {
+            state->pulse_mask |= mask;
+            state->input_last_toggle_us[input] = now_us;
+            continue;
+        }
+        uint32_t periods = (uint32_t)(now_us - state->input_last_toggle_us[input]) /
+                           half_period_us;
+        if (periods & 1u) state->pulse_mask ^= mask;
+        if (periods) state->input_last_toggle_us[input] += periods * half_period_us;
+    }
+    state->active = state->ready_mask != 0;
+    state->pulse = state->global_pulse || state->pulse_mask != 0;
+}
+
+static bool binding_equal(const ini_binding_t *a, const ini_binding_t *b) {
+    return a->type == b->type && a->value == b->value && a->modifier == b->modifier;
+}
+
+static bool binding_effective(const autofire_state_t *state,
+                              const joystick_profile_t *profile,
+                              unsigned input, uint8_t inputs) {
+    const ini_binding_t *binding = input_binding(profile, input);
+    if (!joystick_input_pressed(inputs, (input_id_t)input)) return false;
+    if (!(state->ready_mask & (1u << input))) return true;
+    if (binding->autofire && (state->fixed_mask & (1u << input)))
+        return (state->pulse_mask & (1u << input)) != 0;
+    if (binding->autofire) return state->pulse;
+    if (binding->autofire) return false;
+    for (unsigned other = 0; other < INPUT_COUNT; ++other) {
+        const ini_binding_t *candidate = input_binding(profile, other);
+        if (other != input && candidate->autofire &&
+            joystick_input_pressed(inputs, (input_id_t)other) &&
+            (state->ready_mask & (1u << other)) &&
+            binding_equal(candidate, binding)) {
+            return false;
         }
     }
+    return true;
 }
 
 bool joystick_autofire_enabled(uint8_t inputs, const joystick_profile_t *profile) {
@@ -175,35 +253,6 @@ bool joystick_autofire_enabled(uint8_t inputs, const joystick_profile_t *profile
 uint32_t joystick_report_interval_us(joystick_speed_t speed, bool autofire_active) {
     return speed == JOY_SPEED_SLOW && !autofire_active
         ? JOY_SLOW_REPORT_INTERVAL_US : JOY_FAST_REPORT_INTERVAL_US;
-}
-
-/* A button that is autofiring outputs only while the shared pulse is high.
- * Autofire wins over a normal button mapped to the same output: while an
- * autofire button is held, any normal button with the same code contributes
- * nothing, so the shared output follows only the autofire pattern. Two buttons
- * emit the same output exactly when their codes are equal (the autofire flag
- * lives separately in the mask). */
-static bool binding_equal(const ini_binding_t *a, const ini_binding_t *b) {
-    return a->type == b->type && a->value == b->value && a->modifier == b->modifier;
-}
-
-static bool binding_effective(const autofire_state_t *state,
-                              const joystick_profile_t *profile,
-                              unsigned input, uint8_t inputs) {
-    const ini_binding_t *binding = input_binding(profile, input);
-    if (!joystick_input_pressed(inputs, (input_id_t)input)) return false;
-        if (!(state->ready_mask & (1u << input))) return true;
-        if (binding->autofire) return state->pulse;
-    for (unsigned other = 0; other < INPUT_COUNT; ++other) {
-        const ini_binding_t *candidate = input_binding(profile, other);
-        if (other != input && candidate->autofire &&
-            joystick_input_pressed(inputs, (input_id_t)other) &&
-            (state->ready_mask & (1u << other)) &&
-            binding_equal(candidate, binding)) {
-            return false;
-        }
-    }
-    return true;
 }
 
 joystick_report_t joystick_make_report(autofire_state_t *state, uint8_t inputs,
@@ -240,7 +289,13 @@ joystick_keyboard_report_t joystick_make_keyboard_report(autofire_state_t *state
     unsigned count = 0;
     for (unsigned input = 0; input < INPUT_COUNT; ++input) {
         const ini_binding_t *binding = input_binding(profile, input);
-        if (!binding_effective(state, profile, input, inputs) ||
+        uint8_t mask = (uint8_t)(1u << input);
+        bool keyboard_tap = !binding->autofire &&
+                            (state->keyboard_tap_mask & mask);
+        bool effective = binding->autofire
+            ? binding_effective(state, profile, input, inputs)
+            : keyboard_tap;
+        if (!effective ||
             binding->type != INI_BIND_KEYBOARD) continue;
         report.modifier |= binding->modifier;
         if (binding->value == INI_CODE_NONE) continue;
@@ -251,6 +306,24 @@ joystick_keyboard_report_t joystick_make_keyboard_report(autofire_state_t *state
         if (!duplicate && count < 6) report.keycodes[count++] = ini_config_keycode(binding->value);
     }
     return report;
+}
+
+joystick_runtime_output_t joystick_runtime_step(
+    autofire_state_t *state, uint8_t inputs,
+    const joystick_profile_t *profile,
+    const uint8_t fixed_rates[JOY_PROFILE_INPUT_COUNT],
+    joystick_speed_t speed, bool direct_active, bool suppress_fire,
+    uint32_t now_us) {
+    autofire_state_update(state, inputs, profile, fixed_rates, now_us);
+    joystick_runtime_output_t output = {
+        .joystick = joystick_make_report(state, inputs, profile, suppress_fire),
+        .keyboard = joystick_make_keyboard_report(state, inputs, profile, suppress_fire),
+        .report_interval_us = joystick_report_interval_us(speed, state->active),
+        .autofire_held = state->active,
+        .led_active = joystick_status_led_active(direct_active, state->active,
+                                                  state->pulse)
+    };
+    return output;
 }
 
 bool joystick_direct_activity(uint8_t inputs, bool ignore_fire_buttons) {
@@ -329,6 +402,7 @@ bool joystick_gesture_step(gesture_state_t *state, uint8_t inputs,
     if (!decrease && !increase) {
         state->rate_adjust_held = false;
         state->rate_adjust_active = false;
+        state->rate_led_pulse = false;
     } else {
         bool direction_changed = state->rate_adjust_held &&
                                  state->rate_decrease != decrease;
@@ -342,6 +416,8 @@ bool joystick_gesture_step(gesture_state_t *state, uint8_t inputs,
             (uint32_t)(now_us - state->rate_start_us) >=
                 JOY_GESTURE_ACTIVATION_DELAY_MS * 1000u) {
             state->rate_adjust_active = true;
+            state->rate_led_pulse = true;
+            state->rate_led_last_toggle_us = now_us;
             state->rate_next_us = now_us + JOY_AUTOFIRE_REPEAT_MS * 1000u;
             if (decrease && settings->rate_hz > JOY_AUTOFIRE_MIN_HZ) {
                 --settings->rate_hz;
@@ -424,23 +500,41 @@ bool joystick_gesture_step(gesture_state_t *state, uint8_t inputs,
     return changed;
 }
 
-/* Select-on-release gesture on the two update (small fire) buttons. While both
- * are held the live mode is config once JOY_SPECIAL_HOLD_MS elapses and
- * firmware once JOY_CONFIG_MODE_HOLD_MS more elapses. The chosen mode is
- * returned exactly once when the buttons are released; releasing too early
- * returns BOOT_MODE_NONE. */
+bool joystick_rate_adjustment_led_step(gesture_state_t *state, uint8_t rate_hz,
+                                       uint32_t now_us) {
+    if (!state->rate_adjust_active) {
+        state->rate_led_pulse = false;
+        state->rate_led_last_toggle_us = now_us;
+        return false;
+    }
+    if (!rate_hz) rate_hz = JOY_AUTOFIRE_DEFAULT_HZ;
+    uint32_t half_period_us = 500000u / rate_hz;
+    uint32_t periods = (uint32_t)(now_us - state->rate_led_last_toggle_us) /
+                       half_period_us;
+    if (periods & 1u) state->rate_led_pulse = !state->rate_led_pulse;
+    if (periods) state->rate_led_last_toggle_us += periods * half_period_us;
+    return state->rate_led_pulse;
+}
+
+/* The two update (small fire) buttons select config mode on release after
+ * JOY_SPECIAL_HOLD_MS, but enter firmware update mode immediately when the
+ * full six-second hold is reached. Releasing too early returns NONE. */
 boot_mode_action_t boot_mode_step(boot_mode_state_t *state, bool both_pressed,
                                   uint32_t now_us) {
     boot_mode_action_t action = BOOT_MODE_NONE;
     if (both_pressed) {
-        state->fired = false;
         if (!state->held) {
             state->held = true;
+            state->fired = false;
             state->hold_start_us = now_us;
         }
         uint32_t elapsed = now_us - state->hold_start_us;
         if (elapsed >= (JOY_SPECIAL_HOLD_MS + JOY_CONFIG_MODE_HOLD_MS) * 1000u) {
             state->mode = BOOT_MODE_FIRMWARE;
+            if (!state->fired) {
+                state->fired = true;
+                action = BOOT_MODE_FIRMWARE;
+            }
         } else if (elapsed >= JOY_SPECIAL_HOLD_MS * 1000u) {
             state->mode = BOOT_MODE_CONFIG;
         } else {

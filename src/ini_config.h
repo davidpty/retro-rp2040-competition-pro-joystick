@@ -45,7 +45,13 @@ typedef enum {
  * direction and four button assignments. */
 bool ini_config_parse(const uint8_t *data, size_t length,
                       ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT]);
+bool ini_config_parse_with_rates(
+    const uint8_t *data, size_t length,
+    ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT],
+    uint8_t rates[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT]);
 bool ini_config_binding_format(const ini_binding_t *binding, char *out, size_t capacity);
+bool ini_config_binding_format_with_rate(const ini_binding_t *binding, uint8_t rate_hz,
+                                         char *out, size_t capacity);
 
 /* Reverse lookup: canonical uppercase name for a code, e.g. "JOY1", "SPACE",
  * "F5"; returns "NONE" for invalid codes. */

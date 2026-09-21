@@ -57,37 +57,62 @@ static bool axis_name(const uint8_t *name, size_t length, uint8_t *axis) {
     return false;
 }
 
+static bool parse_autofire_number(const uint8_t *token, size_t length,
+                                  const char *suffix, uint32_t max, uint32_t *out) {
+    size_t end = length;
+    while (end && is_space(token[end - 1])) --end;
+    size_t suffix_len = strlen(suffix);
+    if (end <= suffix_len || !ieq_range(token, end - suffix_len, suffix, suffix_len)) return false;
+    uint32_t value = 0;
+    size_t digits = end - suffix_len;
+    for (size_t i = 0; i < digits; ++i) {
+        if (token[i] < '0' || token[i] > '9') return false;
+        value = value * 10u + (uint32_t)(token[i] - '0');
+        if (value > max) return false;
+    }
+    if (!value) return false;
+    *out = value;
+    return true;
+}
+
 static bool parse_binding_value(const uint8_t *value, size_t length,
-                                bool allow_autofire, ini_binding_t *binding) {
+                                bool allow_autofire, ini_binding_t *binding,
+                                uint8_t *autofire_hz) {
     memset(binding, 0, sizeof(*binding));
     binding->type = INI_BIND_NONE;
     size_t end = length;
     while (end && is_space(value[end - 1])) --end;
-    if (end >= 9 && value[end - 9] == ':' && ieq_range(value, end - 8, "AUTOFIRE", 8)) {
-        if (!allow_autofire) return false;
+    size_t descriptor = end;
+    for (size_t i = 0; i < end; ++i) {
+        if (value[i] == ':') { descriptor = i; break; }
+    }
+    if (descriptor < end) {
+        if (!allow_autofire || descriptor + 9 > end ||
+            !ieq_range(value, descriptor + 1, "AUTOFIRE", 8) ||
+            (descriptor + 9 < end && value[descriptor + 9] != ':')) return false;
         binding->autofire = 1;
-        end -= 9;
-        while (end && is_space(value[end - 1])) --end;
-    } else {
-        const char *suffix = ":AUTOFIRE:";
-        const size_t suffix_len = 10;
-        size_t suffix_start = end;
-        while (suffix_start && value[suffix_start - 1] >= '0' && value[suffix_start - 1] <= '9') --suffix_start;
-        if (suffix_start >= suffix_len && value[suffix_start - suffix_len] == ':' &&
-            ieq_range(value, suffix_start - suffix_len + 1, suffix + 1, suffix_len - 1)) {
-            if (!allow_autofire || suffix_start == end) return false;
-            uint32_t delay = 0;
-            for (size_t i = suffix_start; i < end; ++i) {
-                delay = delay * 10u + (uint32_t)(value[i] - '0');
-                if (delay > JOY_AUTOFIRE_MAX_DELAY_MS) return false;
+        size_t token_start = descriptor + 9;
+        while (token_start < end) {
+            if (value[token_start] != ':') return false;
+            ++token_start;
+            size_t token_end = token_start;
+            while (token_end < end && value[token_end] != ':') ++token_end;
+            uint32_t number;
+            if (parse_autofire_number(value + token_start, token_end - token_start,
+                                       "MS", JOY_AUTOFIRE_MAX_DELAY_MS, &number)) {
+                if (binding->autofire_delay_ms) return false;
+                binding->autofire_delay_ms = (uint16_t)number;
+            } else if (parse_autofire_number(value + token_start, token_end - token_start,
+                                              "HZ", JOY_AUTOFIRE_MAX_HZ, &number)) {
+                if (autofire_hz == NULL || *autofire_hz) return false;
+                *autofire_hz = (uint8_t)number;
+            } else {
+                return false;
             }
-            if (delay == 0) return false;
-            binding->autofire = 1;
-            binding->autofire_delay_ms = (uint16_t)delay;
-            end = suffix_start - suffix_len;
-            while (end && is_space(value[end - 1])) --end;
+            token_start = token_end;
         }
     }
+    end = descriptor;
     if (!end) return false;
 
     uint8_t axis;
@@ -149,10 +174,13 @@ static bool parse_binding_value(const uint8_t *value, size_t length,
     return true;
 }
 
-bool ini_config_parse(const uint8_t *data, size_t length,
-                      ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT]) {
+bool ini_config_parse_with_rates(
+    const uint8_t *data, size_t length,
+    ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT],
+    uint8_t rates[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT]) {
     bool seen[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT] = {{false}};
     bool sections[JOY_PROFILE_COUNT] = {false};
+    if (rates) memset(rates, 0, sizeof(uint8_t) * JOY_PROFILE_COUNT * JOY_PROFILE_INPUT_COUNT);
     unsigned section = JOY_PROFILE_COUNT;
     size_t i = 0;
     while (i < length) {
@@ -200,8 +228,10 @@ bool ini_config_parse(const uint8_t *data, size_t length,
         while (comment < ve && data[comment] != ';') ++comment;
         ve = comment;
         while (ve > vs && is_space(data[ve - 1])) --ve;
+        uint8_t rate = 0;
         if (!parse_binding_value(data + vs, ve - vs, true,
-                                 &bindings[section][slot])) return false;
+                                 &bindings[section][slot], &rate)) return false;
+        if (rates) rates[section][slot] = rate;
         seen[section][slot] = true;
     }
     for (unsigned p = 0; p < JOY_PROFILE_COUNT; ++p) {
@@ -210,6 +240,11 @@ bool ini_config_parse(const uint8_t *data, size_t length,
             if (!seen[p][s]) return false;
     }
     return true;
+}
+
+bool ini_config_parse(const uint8_t *data, size_t length,
+                      ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT]) {
+    return ini_config_parse_with_rates(data, length, bindings, NULL);
 }
 
 static const char *const code_names[INI_CODE_COUNT] = {
@@ -224,7 +259,8 @@ static const char *const code_names[INI_CODE_COUNT] = {
 
 const char *ini_config_code_name(uint8_t code) { return code < INI_CODE_COUNT ? code_names[code] : "NONE"; }
 
-bool ini_config_binding_format(const ini_binding_t *binding, char *out, size_t capacity) {
+bool ini_config_binding_format_with_rate(const ini_binding_t *binding, uint8_t rate_hz,
+                                         char *out, size_t capacity) {
     const char *name = "NONE";
     if (binding->type == INI_BIND_GAMEPAD && binding->value >= 1 && binding->value <= 4) {
         name = ini_config_code_name((uint8_t)(INI_CODE_JOY1 + binding->value - 1));
@@ -246,12 +282,23 @@ bool ini_config_binding_format(const ini_binding_t *binding, char *out, size_t c
     }
     char suffix[32] = "";
     if (binding->autofire) {
-        if (binding->autofire_delay_ms) snprintf(suffix, sizeof(suffix), ":AUTOFIRE:%u",
-                                                 (unsigned)binding->autofire_delay_ms);
-        else snprintf(suffix, sizeof(suffix), ":AUTOFIRE");
+        int used = snprintf(suffix, sizeof(suffix), ":AUTOFIRE");
+        if (binding->autofire_delay_ms)
+            used += snprintf(suffix + used, sizeof(suffix) - (size_t)used, ":%uMS",
+                             (unsigned)binding->autofire_delay_ms);
+        if (rate_hz)
+            used += snprintf(suffix + used, sizeof(suffix) - (size_t)used, ":%uHZ",
+                             (unsigned)rate_hz);
+        if (used < 0 || (size_t)used >= sizeof(suffix)) return false;
+    } else if (rate_hz) {
+        return false;
     }
     int n = snprintf(out, capacity, "%s%s%s", prefix, name, suffix);
     return n >= 0 && (size_t)n < capacity;
+}
+
+bool ini_config_binding_format(const ini_binding_t *binding, char *out, size_t capacity) {
+    return ini_config_binding_format_with_rate(binding, 0, out, capacity);
 }
 uint8_t ini_config_joy_button(uint8_t code) { return code >= INI_CODE_JOY1 && code <= INI_CODE_JOY4 ? code : 0; }
 uint8_t ini_config_keycode(uint8_t code) {

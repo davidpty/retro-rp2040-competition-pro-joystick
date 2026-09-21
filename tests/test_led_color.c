@@ -14,9 +14,9 @@ static void test_slow_profile_colors(void) {
     assert(led_color_scale(JOY_PROFILE_COLOR_1, level) ==
            JOY_LED_RGB(0, 51, 0));
     assert(led_color_scale(JOY_PROFILE_COLOR_2, level) ==
-           JOY_LED_RGB(20, 0, 51));
+           JOY_LED_RGB(0, 0, 51));
     assert(led_color_scale(JOY_PROFILE_COLOR_3, level) ==
-           JOY_LED_RGB(51, 51, 0));
+           JOY_LED_RGB(51, 40, 0));
 }
 
 int test_led_color_main(void) {

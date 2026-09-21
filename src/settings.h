@@ -8,7 +8,7 @@
 #include "joystick.h"
 
 #define JOY_SETTINGS_MAGIC   0x4a535447u
-#define JOY_SETTINGS_VERSION 10u
+#define JOY_SETTINGS_VERSION 11u
 
 #ifndef JOY_SETTINGS_OVERWRITE
 #define JOY_SETTINGS_OVERWRITE 0
@@ -25,6 +25,7 @@ typedef struct {
     uint8_t led_enabled;
     uint8_t reserved1;
     joystick_profile_t profiles[JOY_PROFILE_COUNT];
+    uint8_t autofire_hz[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT];
     uint8_t active_profile;
     uint8_t reserved2;
     uint32_t sequence;

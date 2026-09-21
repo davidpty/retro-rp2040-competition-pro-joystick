@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <string.h>
 
-_Static_assert(sizeof(joystick_settings_record_t) == 212,
+_Static_assert(sizeof(joystick_settings_record_t) == 244,
                "Settings record layout changed unexpectedly");
 
 static uint32_t crc32(const void *data, size_t length) {
@@ -18,9 +18,11 @@ static uint32_t crc32(const void *data, size_t length) {
     return ~crc;
 }
 
-static bool load_default_profiles(joystick_profile_t profiles[JOY_PROFILE_COUNT]) {
+static bool load_default_profiles(joystick_profile_t profiles[JOY_PROFILE_COUNT],
+                                  uint8_t rates[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT]) {
     ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT];
-    if (!ini_config_parse(joystick_default_ini, JOYSTICK_DEFAULT_INI_SIZE, bindings)) return false;
+    if (!ini_config_parse_with_rates(joystick_default_ini, JOYSTICK_DEFAULT_INI_SIZE,
+                                     bindings, rates)) return false;
     for (unsigned p = 0; p < JOY_PROFILE_COUNT; ++p) {
         for (unsigned d = 0; d < JOY_DIRECTION_COUNT; ++d)
             profiles[p].direction[d] = bindings[p][d];
@@ -36,7 +38,8 @@ void joystick_settings_defaults(joystick_settings_t *settings) {
     settings->led_enabled = true;
     settings->active_profile = 0;
     settings->settings_token = 0;
-    if (!load_default_profiles(settings->profiles))
+    memset(settings->autofire_hz, 0, sizeof(settings->autofire_hz));
+    if (!load_default_profiles(settings->profiles, settings->autofire_hz))
         memset(settings->profiles, 0, sizeof(settings->profiles));
 }
 
@@ -56,7 +59,12 @@ const joystick_profile_t *joystick_settings_active_profile(const joystick_settin
 void joystick_settings_reset_profile(joystick_settings_t *settings, uint8_t profile) {
     if (profile < JOY_PROFILE_COUNT) {
         joystick_profile_t defaults[JOY_PROFILE_COUNT];
-        if (load_default_profiles(defaults)) settings->profiles[profile] = defaults[profile];
+        uint8_t rates[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT];
+        if (load_default_profiles(defaults, rates)) {
+            settings->profiles[profile] = defaults[profile];
+            memcpy(settings->autofire_hz[profile], rates[profile],
+                   sizeof(settings->autofire_hz[profile]));
+        }
     }
 }
 
@@ -70,12 +78,14 @@ joystick_settings_record_t joystick_settings_record_make(
         .led_enabled = settings->led_enabled ? 1u : 0u,
         .reserved1 = (uint8_t)(settings->settings_token & 0xffu),
         .profiles = {{{{0}}}},
+        .autofire_hz = {{0}},
         .active_profile = settings->active_profile,
         .reserved2 = (uint8_t)(settings->settings_token >> 8),
         .sequence = sequence,
         .crc32 = 0
     };
     memcpy(record.profiles, settings->profiles, sizeof(record.profiles));
+    memcpy(record.autofire_hz, settings->autofire_hz, sizeof(record.autofire_hz));
     record.crc32 = crc32(&record, offsetof(joystick_settings_record_t, crc32));
     return record;
 }
@@ -98,6 +108,9 @@ bool joystick_settings_record_valid(const joystick_settings_record_t *record) {
         record->speed > JOY_SPEED_SLOW || record->rate_hz < JOY_AUTOFIRE_MIN_HZ ||
         record->rate_hz > JOY_AUTOFIRE_MAX_HZ || record->led_enabled > 1 ||
         record->active_profile >= JOY_PROFILE_COUNT) return false;
+    for (unsigned p = 0; p < JOY_PROFILE_COUNT; ++p)
+        for (unsigned i = 0; i < JOY_PROFILE_INPUT_COUNT; ++i)
+            if (record->autofire_hz[p][i] > JOY_AUTOFIRE_MAX_HZ) return false;
     for (unsigned p = 0; p < JOY_PROFILE_COUNT; ++p) {
         for (unsigned i = 0; i < JOY_DIRECTION_COUNT; ++i)
             if (!binding_valid(&record->profiles[p].direction[i])) return false;
@@ -124,6 +137,7 @@ bool joystick_settings_load_records(const joystick_settings_record_t *first,
     settings->settings_token = (uint16_t)selected->reserved1 |
                                (uint16_t)selected->reserved2 << 8;
     memcpy(settings->profiles, selected->profiles, sizeof(settings->profiles));
+    memcpy(settings->autofire_hz, selected->autofire_hz, sizeof(settings->autofire_hz));
     if (slot) *slot = selected_slot;
     return true;
 }
@@ -131,5 +145,6 @@ bool joystick_settings_load_records(const joystick_settings_record_t *first,
 bool joystick_settings_equal(const joystick_settings_t *a, const joystick_settings_t *b) {
     return a->speed == b->speed && a->rate_hz == b->rate_hz &&
            a->led_enabled == b->led_enabled && a->active_profile == b->active_profile &&
-           memcmp(a->profiles, b->profiles, sizeof(a->profiles)) == 0;
+           memcmp(a->profiles, b->profiles, sizeof(a->profiles)) == 0 &&
+           memcmp(a->autofire_hz, b->autofire_hz, sizeof(a->autofire_hz)) == 0;
 }

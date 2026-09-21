@@ -42,10 +42,10 @@ Default USB mapping:
 
 | Physical control | USB output |
 |---|---|
-| Big Fire 1 | Button 1 |
-| Big Fire 2 | Button 2 |
-| Small Fire 1 | Autofire for Button 1 |
-| Small Fire 2 | Button 3 |
+| Big Fire 1 | `JOY1` autofire after 500 ms |
+| Big Fire 2 | `SPACE` keyboard key |
+| Small Fire 1 | Adjustable-rate `JOY1` autofire |
+| Small Fire 2 | Fixed 25 Hz `JOY1` autofire |
 
 Every output can be remapped at runtime through the built-in configuration
 drive — see [Configuring the mappings](#configuring-the-mappings).
@@ -92,7 +92,10 @@ keys depending on the configured codes.
 
 - The default mode reports input quickly, approximately every 1 ms.
 - Direction pairs report center when both directions on the same axis are pressed.
-- By default Small Fire 1 autofires Button 1 while held. The default rate is 20 Hz and can be adjusted from 1–60 Hz, and autofire can be moved to any output via the config drive.
+- By default Big Fire 1 autofires `JOY1` after 500 ms, while Small Fire 1
+  provides immediate autofire at the adjustable global rate. The default rate
+  is 20 Hz and can be adjusted from 1–100 Hz; autofire can be moved to any
+  output via the config drive.
 - The USB identity is manufacturer `Retro 2040`, product `Competition Pro`, with the board ID as its serial number.
 
 ### Status LED
@@ -106,7 +109,7 @@ The four profiles are named after their colors: Red, Blue, Green, and Yellow.
 | Profile color dimmed | Slow compatibility polling mode active |
 | Profile color pulsing | An autofire input is held; pulse rate matches the configured autofire rate |
 | Purple | Configuration drive is active |
-| Magenta | Firmware update selected (hold Small Fire 1 + 2 past 6 s, before release) |
+| Magenta | Firmware update selected at 6 s while Small Fire 1 + 2 remain held |
 | Three red flashes | A rejected or incomplete `JOYSTICK.INI` before reboot |
 | Off | Idle, or LED feedback toggled off |
 
@@ -122,7 +125,7 @@ Gestures use the physical fire buttons and cannot be remapped. Hold a pair for
 | Big Fire 1 + Small Fire 2 | Select slow compatibility mode |
 | Big Fire 2 + Small Fire 2 | Select fast mode |
 | Small Fire 1 + Small Fire 2 for 3 seconds, release | Enter configuration mode (USB drive with `JOYSTICK.INI`) |
-| Small Fire 1 + Small Fire 2 for 6 seconds, release | Enter BOOTSEL update mode |
+| Small Fire 1 + Small Fire 2 for 6 seconds | Immediately enter BOOTSEL update mode |
 | Small Fire 1 + Small Fire 2 + joystick Up | Select Red profile after 500 ms |
 | Small Fire 1 + Small Fire 2 + joystick Down | Select Blue profile after 500 ms |
 | Small Fire 1 + Small Fire 2 + joystick Left | Select Green profile after 500 ms |
@@ -132,60 +135,65 @@ Gestures use the physical fire buttons and cannot be remapped. Hold a pair for
 
 Settings are saved and restored after reboot. Releasing the buttons cancels a gesture before its hold time is reached.
 
+After the autofire-rate gesture activates, the profile LED blinks at the
+current adjustable rate. This indication is independent of the mappings of the
+buttons being held; fixed `:HZ` autofire mappings are not changed.
+
 ## Configuring the mappings
 
 The four fire buttons and four joystick directions can be remapped independently
 for each button-mapping profile without rebuilding the firmware. Profiles can
 send joystick directions, gamepad buttons, keyboard keys, or keyboard
 combinations, and any mapped input can use autofire. `:AUTOFIRE` starts pulsing
-immediately; `:AUTOFIRE:500` keeps the output held normally for 500 ms,
-then starts pulsing while the input remains held. Delayed autofire values may
-range from 1 to 60000 ms.
+immediately; `:AUTOFIRE:500MS` keeps the output held normally for 500 ms,
+then starts pulsing while the input remains held. Add `:20HZ` to use a fixed
+frequency for that input. `MS` and `HZ` parameters may appear in either order;
+delays range from 1 to 60000 ms and frequencies from 1 to 100 Hz.
 
 1. Hold **Small Fire 1 + Small Fire 2 for 3 seconds**, then release. While
    holding, the status LED lights once config mode is selected. On release the
    board reboots into configuration mode: the joystick is disconnected and a
-   USB drive appears. (Holding for 6 seconds and releasing instead reboots into
-   BOOTSEL update mode.)
+   USB drive appears. Holding for 6 seconds enters BOOTSEL immediately, even
+   while the buttons remain pressed.
 2. Open the `JOYSTICK.INI` file and edit the eight mapping lines in each
    profile section:
 
    ```ini
    [RED]
-   button1=JOY1            ; Button 1 (default for Big Fire 1)
-   button2=JOY2            ; Button 2 (default for Big Fire 2)
-   button3=JOY1:AUTOFIRE   ; Autofire for Button 1
-   button4=JOY3            ; Button 3 (default for Small Fire 2)
+   button1=JOY1:AUTOFIRE:500MS ; Delayed autofire for Big Fire 1
+   button2=SPACE                ; Keyboard key for Big Fire 2
+   button3=JOY1:AUTOFIRE        ; Adjustable autofire for Small Fire 1
+   button4=JOY1:AUTOFIRE:25HZ   ; Fixed-rate autofire for Small Fire 2
    up=UP
    down=DOWN
    left=LEFT
    right=RIGHT
 
    [BLUE]
-   button1=JOY1
-   button2=JOY2
-   button3=JOY1:AUTOFIRE
-   button4=JOY3
-   up=UP:AUTOFIRE
+   button1=JOY1                ; Normal A / Big Fire 1
+   button2=JOY2                ; Normal B / Big Fire 2
+   button3=JOY1:AUTOFIRE       ; Adjustable autofire A / Small Fire 1
+   button4=JOY2:AUTOFIRE       ; Adjustable autofire B / Small Fire 2
+   up=UP
    down=DOWN
    left=LEFT
    right=RIGHT
 
    [GREEN]
-   button1=JOY1
-   button2=JOY2
-   button3=CTRL+ALT+B:AUTOFIRE
-   button4=JOY3
-   up=W
-   down=S
-   left=A
-   right=D
+   button1=JOY1                 ; A
+   button2=JOY2                 ; B
+   button3=JOY3                 ; Normal C
+   button4=JOY3:AUTOFIRE:250MS:25HZ ; Fixed-rate autofire C
+   up=UP
+   down=DOWN
+   left=LEFT
+   right=RIGHT
 
    [YELLOW]
    button1=JOY1
    button2=JOY2
-   button3=JOY1:AUTOFIRE
-   button4=JOY3
+   button3=JOY3
+   button4=JOY4
    up=UP
    down=DOWN
    left=LEFT
@@ -193,7 +201,15 @@ range from 1 to 60000 ms.
    ```
 
    A delayed autofire mapping can be written as, for example,
-   `button1=JOY1:AUTOFIRE:500`.
+   `button1=JOY1:AUTOFIRE:500MS:20HZ`.
+
+   | Input | GPIO | Output names |
+   |---|---:|---|
+   | Big Fire 1 | 4 | `button1`, `JOY1` .. `JOY4` |
+   | Big Fire 2 | 5 | `button2`, `JOY1` .. `JOY4` |
+   | Small Fire 1 | 6 | `button3`, `JOY1` .. `JOY4` |
+   | Small Fire 2 | 7 | `button4`, `JOY1` .. `JOY4` |
+   | Up / Down / Left / Right | 0 / 1 / 2 / 3 | `up`, `down`, `left`, `right` |
 
    Valid outputs:
 
@@ -220,14 +236,14 @@ Notes:
   otherwise the previous configuration is kept.
 - Use `SHIFT+A`, `CTRL+ALT+B`, or similar plus-separated combinations for one
   physical input. Add `:AUTOFIRE` to any mapping, including a direction, to
-  repeat it at the configured rate while held.
+  repeat it at the configured rate while held. Add `:20HZ` to pin that input
+  to 20 Hz; fixed frequencies are not changed by the rate-adjustment gesture.
 - To reverse the joystick in a profile, swap its axis values, for example
   `up=DOWN`, `down=UP`, `left=RIGHT`, and `right=LEFT`.
 - Autofire takes priority once active: if an input with `:AUTOFIRE` or
-  `:AUTOFIRE:milliseconds` and another input share the same output (for
-  example, `JOY1:AUTOFIRE:500` and `JOY1`), the shared output follows only the
-  autofire pattern after the delay has elapsed. Before a delayed autofire
-  activates, the output behaves like a normal held input.
+  `:AUTOFIRE:500MS` and another input share the same output, the shared output
+  follows the autofire pattern after the delay has elapsed. Multiple autofire
+  inputs sharing one output combine their independent pulses.
 - The board reboots after an eject. If `JOYSTICK.INI` has changed the mapping,
   the new settings are used; an unchanged file exits config mode without an
   error indication.

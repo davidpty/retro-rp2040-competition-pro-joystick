@@ -21,7 +21,7 @@
  * remapped. */
 #define JOY_AUTOFIRE_DEFAULT_HZ   20  /* Used only when flash settings are invalid */
 #define JOY_AUTOFIRE_MIN_HZ        1
-#define JOY_AUTOFIRE_MAX_HZ       60
+#define JOY_AUTOFIRE_MAX_HZ       100
 #define JOY_AUTOFIRE_MAX_DELAY_MS 60000
 #define JOY_AUTOFIRE_REPEAT_MS   500  /* Rate adjustment repeat interval */
 #define JOY_GESTURE_ACTIVATION_DELAY_MS 500  /* Hold before rate/mode action */
@@ -30,10 +30,10 @@
 /* Hold Big Fire 1 + Big Fire 2 for JOY_SPECIAL_HOLD_MS (3s): toggle LED
  * feedback.
  *
- * Hold Small Fire 1 + Small Fire 2 to select a mode, then release to enter it.
- * Once JOY_SPECIAL_HOLD_MS (3s) elapses config mode is selected (LED shows
- * JOY_LED_CONFIG_COLOR). Keep holding an additional JOY_CONFIG_MODE_HOLD_MS
- * (3s, 6s total) to select firmware update / BOOTSEL instead (LED shows
+ * Hold Small Fire 1 + Small Fire 2 to select a mode. Once JOY_SPECIAL_HOLD_MS
+ * (3s) elapses config mode is selected (LED shows JOY_LED_CONFIG_COLOR) and
+ * releasing enters it. Keep holding an additional JOY_CONFIG_MODE_HOLD_MS
+ * (3s, 6s total) to enter firmware update / BOOTSEL immediately (LED shows
  * JOY_LED_FIRMWARE_COLOR). Releasing before 3s selects nothing. */
 #define JOY_CONFIG_MODE_HOLD_MS   3000
 #define JOY_CONFIG_DRIVE_MAGIC    0x434f4e47u  /* "CONG" in watchdog scratch */

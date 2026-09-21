@@ -91,13 +91,15 @@ static config_apply_result_t config_apply(const joystick_settings_t *current) {
     size_t length = msc_volume_read_ini(volume, data, sizeof(data));
     ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT];
     config_apply_result_t result = CONFIG_APPLY_REJECTED;
-    if (ini_config_parse(data, length, bindings)) {
+    uint8_t rates[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT] = {{0}};
+    if (ini_config_parse_with_rates(data, length, bindings, rates)) {
         joystick_settings_t parsed = *current;
         for (unsigned p = 0; p < JOY_PROFILE_COUNT; ++p) {
             memcpy(parsed.profiles[p].direction, bindings[p],
                    sizeof(parsed.profiles[p].direction));
             memcpy(parsed.profiles[p].button, bindings[p] + JOY_DIRECTION_COUNT,
                    sizeof(parsed.profiles[p].button));
+            memcpy(parsed.autofire_hz[p], rates[p], sizeof(parsed.autofire_hz[p]));
         }
         if (joystick_settings_equal(&parsed, current)) {
             result = CONFIG_APPLY_UNCHANGED;
@@ -315,28 +317,27 @@ int main(void) {
 
         const joystick_profile_t *active_profile =
             joystick_settings_active_profile(&settings);
-        bool autofire_held = !post_reboot_input_guard &&
-                             joystick_autofire_enabled(inputs, active_profile);
-        uint32_t interval_us = joystick_report_interval_us(settings.speed, autofire_held);
-        autofire_state_update(&autofire, inputs, active_profile, now_us);
         bool suppress_fire_output = gesture_state.suppress_output ||
                                     factory_reset.triggered;
+        bool direct_active = joystick_direct_activity(inputs, autofire_adjusting);
+        joystick_runtime_output_t runtime = joystick_runtime_step(
+            &autofire, inputs, active_profile,
+            settings.autofire_hz[settings.active_profile], settings.speed,
+            direct_active, suppress_fire_output, now_us);
         if (!config_drive_enabled && !post_reboot_input_guard) {
-            if (joystick_report_due(&next_report_us, now_us, interval_us)) {
-                joystick_report_t report = joystick_make_report(
-                    &autofire, inputs, active_profile, suppress_fire_output);
+            if (joystick_report_due(&next_report_us, now_us,
+                                    runtime.report_interval_us)) {
                 if (tud_hid_n_ready(0)) {
-                    tud_hid_n_report(0, REPORT_ID_JOYSTICK, &report, sizeof(report));
+                    tud_hid_n_report(0, REPORT_ID_JOYSTICK, &runtime.joystick,
+                                     sizeof(runtime.joystick));
                 }
             }
-            joystick_keyboard_report_t keyboard = joystick_make_keyboard_report(
-                &autofire, inputs, active_profile, suppress_fire_output);
-            if (memcmp(&keyboard, &last_keyboard, sizeof(keyboard)) != 0) {
-                last_keyboard = keyboard;
-                if (tud_hid_n_ready(1)) {
-                    tud_hid_n_keyboard_report(1, REPORT_ID_KEYBOARD,
-                                              keyboard.modifier, keyboard.keycodes);
-                }
+            if (memcmp(&runtime.keyboard, &last_keyboard, sizeof(runtime.keyboard)) != 0 &&
+                tud_hid_n_ready(1) &&
+                tud_hid_n_keyboard_report(1, REPORT_ID_KEYBOARD,
+                                          runtime.keyboard.modifier,
+                                          runtime.keyboard.keycodes)) {
+                last_keyboard = runtime.keyboard;
             }
         }
 
@@ -351,10 +352,11 @@ int main(void) {
         status_led_set_hold_color(hold_color);
         if (!config_drive_enabled && !post_reboot_input_guard &&
             !factory_reset_led_holdoff) {
-            bool direct_active = joystick_direct_activity(inputs, autofire_adjusting);
-            bool led_active = joystick_status_led_active(direct_active,
-                                                         autofire.active,
-                                                         autofire.pulse);
+            bool led_active = runtime.led_active;
+            if (gesture_state.rate_adjust_active) {
+                led_active = joystick_rate_adjustment_led_step(
+                    &gesture_state, settings.rate_hz, now_us);
+            }
             status_led_update(led_active,
                               settings.led_enabled,
                               settings.speed == JOY_SPEED_SLOW, now_us);
