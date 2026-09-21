@@ -8,7 +8,7 @@ The original switches and enclosure can be kept while the firmware adds faster i
 
 - Four persistent button-mapping profiles shown via LED Red, Green, Purple, and Yellow.
 - Each profile can assign all four fire buttons and all four directions to joystick directions, gamepad buttons, keyboard keys, or keyboard combinations.
-- Optional autofire can be assigned to any mapped input.
+- Optional autofire can be assigned to any mapped input, either immediately or after a configurable hold delay.
 - Hold both small buttons and move the joystick Up, Down, Left, or Right to select a profile.
 - Fast polling for responsive games and slow polling for compatibility with older systems.
 - A simple USB configuration drive for editing all four profiles without rebuilding the firmware.
@@ -224,10 +224,11 @@ Notes:
   repeat it at the configured rate while held.
 - To reverse the joystick in a profile, swap its axis values, for example
   `up=DOWN`, `down=UP`, `left=RIGHT`, and `right=LEFT`.
-- Autofire takes priority: if an input with `:AUTOFIRE` and another input share
-  the same output (e.g. `SPACE:AUTOFIRE` and `SPACE`, or `JOY1:AUTOFIRE` and
-  `JOY1`), the shared output follows only the autofire pattern while the
-  autofire input is held — the held normal input is suppressed.
+- Autofire takes priority once active: if an input with `:AUTOFIRE` or
+  `:AUTOFIRE:milliseconds` and another input share the same output (for
+  example, `JOY1:AUTOFIRE:500` and `JOY1`), the shared output follows only the
+  autofire pattern after the delay has elapsed. Before a delayed autofire
+  activates, the output behaves like a normal held input.
 - The board reboots after an eject. If `JOYSTICK.INI` has changed the mapping,
   the new settings are used; an unchanged file exits config mode without an
   error indication.
