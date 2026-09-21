@@ -10,6 +10,13 @@
 #define JOY_SETTINGS_MAGIC   0x4a535447u
 #define JOY_SETTINGS_VERSION 10u
 
+#ifndef JOY_SETTINGS_OVERWRITE
+#define JOY_SETTINGS_OVERWRITE 0
+#endif
+#ifndef JOY_SETTINGS_OVERWRITE_TOKEN
+#define JOY_SETTINGS_OVERWRITE_TOKEN 0u
+#endif
+
 typedef struct {
     uint32_t magic;
     uint16_t version;

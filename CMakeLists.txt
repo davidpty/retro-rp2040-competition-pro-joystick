@@ -10,6 +10,8 @@ if (NOT PICO_SDK_PATH)
 endif()
 set(PICO_SDK_PATH "${PICO_SDK_PATH}" CACHE PATH "Pico SDK location")
 set(PICO_BOARD pico CACHE STRING "Generic RP2040 board; compatible with RP2040-Zero")
+set(JOY_SETTINGS_OVERWRITE 0 CACHE BOOL "Restore embedded settings once on first boot")
+set(JOY_SETTINGS_OVERWRITE_TOKEN 0 CACHE STRING "Token for one-time settings restore")
 
 include("${PICO_SDK_PATH}/external/pico_sdk_import.cmake")
 
@@ -39,6 +41,8 @@ target_include_directories(rp2040_zero_hid_joystick PRIVATE . src ${GENERATED_IN
 target_compile_definitions(rp2040_zero_hid_joystick PRIVATE
     CFG_TUSB_CONFIG_FILE="tusb_config.h"
     PICO_FLASH_ASSERT_ON_UNSAFE=0
+    JOY_SETTINGS_OVERWRITE=${JOY_SETTINGS_OVERWRITE}
+    JOY_SETTINGS_OVERWRITE_TOKEN=${JOY_SETTINGS_OVERWRITE_TOKEN}
 )
 target_link_libraries(rp2040_zero_hid_joystick
     pico_stdlib

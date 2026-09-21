@@ -165,7 +165,7 @@ bool ini_config_parse(const uint8_t *data, size_t length,
         if (i < length && data[i] == '\n') ++i;
         if (ls == le || data[ls] == ';') continue;
         if (data[ls] == '[' && le > ls + 1 && data[le - 1] == ']') {
-            static const char names[JOY_PROFILE_COUNT][8] = {"RED", "GREEN", "PURPLE", "YELLOW"};
+            static const char names[JOY_PROFILE_COUNT][8] = {"RED", "GREEN", "BLUE", "YELLOW"};
             section = JOY_PROFILE_COUNT;
             for (unsigned p = 0; p < JOY_PROFILE_COUNT; ++p) {
                 size_t n = le - ls - 2;

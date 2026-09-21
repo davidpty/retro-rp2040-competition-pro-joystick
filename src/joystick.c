@@ -297,8 +297,8 @@ bool joystick_gesture_step(gesture_state_t *state, uint8_t inputs,
     uint8_t selected_profile = 0;
     if (profile_pair) {
         if (joystick_input_pressed(inputs, INPUT_UP)) selected_profile = 0;
-        else if (joystick_input_pressed(inputs, INPUT_DOWN)) selected_profile = 1;
-        else if (joystick_input_pressed(inputs, INPUT_LEFT)) selected_profile = 2;
+        else if (joystick_input_pressed(inputs, INPUT_DOWN)) selected_profile = 2;
+        else if (joystick_input_pressed(inputs, INPUT_LEFT)) selected_profile = 1;
         else selected_profile = 3;
         if (!state->profile_held || state->profile_index != selected_profile) {
             state->profile_held = true;

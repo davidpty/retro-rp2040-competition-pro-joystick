@@ -104,6 +104,7 @@ typedef struct {
     bool led_enabled;
     joystick_profile_t profiles[JOY_PROFILE_COUNT];
     uint8_t active_profile;
+    uint16_t settings_token;
 } joystick_settings_t;
 
 uint8_t joystick_gpio_snapshot(uint32_t gpio_levels);

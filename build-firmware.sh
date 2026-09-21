@@ -1,6 +1,39 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+usage() {
+    cat <<'EOF'
+Usage: ./build-firmware.sh [OPTIONS]
+
+Build the RP2040 joystick firmware.
+
+Options:
+  --overwrite-settings  Build firmware that restores the embedded defaults once
+                        on its first boot, then preserves later changes.
+  -h, --help            Show this help and exit.
+
+Environment:
+  BUILD_DIR             CMake build directory (default: build)
+  PICO_SDK_PATH         Raspberry Pi Pico SDK directory (required)
+  PICOTOOL_DIR          picotool CMake package directory (optional)
+  CMAKE_BIN             CMake executable (optional)
+EOF
+}
+
+overwrite_settings=0
+while (($# > 0)); do
+    case "$1" in
+        --overwrite-settings) overwrite_settings=1 ;;
+        -h|--help) usage; exit 0 ;;
+        *)
+            printf 'Unknown option: %s\n\n' "$1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
 build_dir="${BUILD_DIR:-build}"
 pico_sdk_path="${PICO_SDK_PATH:-}"
 picotool_cmake_dir="${PICOTOOL_DIR:-${picotool_DIR:-}}"
@@ -34,6 +67,14 @@ cmake_args=(-DPICO_SDK_PATH="$pico_sdk_path")
 if [[ -n "$picotool_cmake_dir" ]]; then
     cmake_args+=(-Dpicotool_DIR="$picotool_cmake_dir")
 fi
+cmake_args+=(-DJOY_SETTINGS_OVERWRITE="$overwrite_settings")
+if ((overwrite_settings)); then
+    reset_token="$(date +%s%N | cksum | cut -d ' ' -f1)"
+    reset_token=$((reset_token % 65535 + 1))
+else
+    reset_token=0
+fi
+cmake_args+=(-DJOY_SETTINGS_OVERWRITE_TOKEN="$reset_token")
 
 "$cmake_bin" -S . -B "$build_dir" "${cmake_args[@]}"
 "$cmake_bin" --build "$build_dir" --parallel

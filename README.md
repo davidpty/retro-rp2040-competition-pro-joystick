@@ -6,7 +6,7 @@ The original switches and enclosure can be kept while the firmware adds faster i
 
 ### Key features
 
-- Four persistent button-mapping profiles shown via LED Red, Green, Purple, and Yellow.
+- Four persistent button-mapping profiles shown via LED Red, Green, Blue, and Yellow.
 - Each profile can assign all four fire buttons and all four directions to joystick directions, gamepad buttons, keyboard keys, or keyboard combinations.
 - Optional autofire can be assigned to any mapped input, either immediately or after a configurable hold delay.
 - Hold both small buttons and move the joystick Up, Down, Left, or Right to select a profile.
@@ -98,16 +98,15 @@ keys depending on the configured codes.
 ### Status LED
 
 The onboard RGB LED mostly shows the active profile color at full brightness.
-The four profiles are named after their colors: Red, Green, Purple, and
-Yellow.
+The four profiles are named after their colors: Red, Blue, Green, and Yellow.
 
 | LED | Meaning |
 |---|---|
-| Profile color (full) | Active profile: any fire button held |
-| Profile color (dimmed to 20%) | Slow compatibility polling mode active |
+| Profile color | Active profile: any fire button held |
+| Profile color dimmed | Slow compatibility polling mode active |
 | Profile color pulsing | An autofire input is held; pulse rate matches the configured autofire rate |
-| Blue (solid) | Configuration drive is active |
-| Cyan | Firmware update selected (hold Small Fire 1 + 2 past 6 s, before release) |
+| Purple | Configuration drive is active |
+| Magenta | Firmware update selected (hold Small Fire 1 + 2 past 6 s, before release) |
 | Three red flashes | A rejected or incomplete `JOYSTICK.INI` before reboot |
 | Off | Idle, or LED feedback toggled off |
 
@@ -125,8 +124,8 @@ Gestures use the physical fire buttons and cannot be remapped. Hold a pair for
 | Small Fire 1 + Small Fire 2 for 3 seconds, release | Enter configuration mode (USB drive with `JOYSTICK.INI`) |
 | Small Fire 1 + Small Fire 2 for 6 seconds, release | Enter BOOTSEL update mode |
 | Small Fire 1 + Small Fire 2 + joystick Up | Select Red profile after 500 ms |
-| Small Fire 1 + Small Fire 2 + joystick Down | Select Green profile after 500 ms |
-| Small Fire 1 + Small Fire 2 + joystick Left | Select Purple profile after 500 ms |
+| Small Fire 1 + Small Fire 2 + joystick Down | Select Blue profile after 500 ms |
+| Small Fire 1 + Small Fire 2 + joystick Left | Select Green profile after 500 ms |
 | Small Fire 1 + Small Fire 2 + joystick Right | Select Yellow profile after 500 ms |
 | Big Fire 1 + Big Fire 2 for 3 seconds | Toggle normal LED feedback |
 | All four fire buttons for 3 seconds | Select Red, reset only its mapping to factory defaults, and reset global settings |
@@ -162,6 +161,16 @@ range from 1 to 60000 ms.
    left=LEFT
    right=RIGHT
 
+   [BLUE]
+   button1=JOY1
+   button2=JOY2
+   button3=JOY1:AUTOFIRE
+   button4=JOY3
+   up=UP:AUTOFIRE
+   down=DOWN
+   left=LEFT
+   right=RIGHT
+
    [GREEN]
    button1=JOY1
    button2=JOY2
@@ -171,16 +180,6 @@ range from 1 to 60000 ms.
    down=S
    left=A
    right=D
-
-   [PURPLE]
-   button1=JOY1
-   button2=JOY2
-   button3=JOY1:AUTOFIRE
-   button4=JOY3
-   up=UP:AUTOFIRE
-   down=DOWN
-   left=LEFT
-   right=RIGHT
 
    [YELLOW]
    button1=JOY1
@@ -211,7 +210,7 @@ range from 1 to 60000 ms.
 
 3. Save and unmount (or eject) the drive. After about a second the board
    applies the new mapping and reboots automatically into joystick mode. The
-   LED remains solid blue while the configuration drive is active.
+   LED remains purple while the configuration drive is active.
 
 Notes:
 
@@ -234,7 +233,9 @@ Notes:
   error indication.
 - An unreadable or incomplete file (still being written, or malformed) keeps
   the old mapping. After the save becomes idle or the drive is unmounted, the
-  status LED flashes red three times and the board reboots into joystick mode.
+  status LED flashes red three times and the board remains in config mode so
+  the file can be corrected and saved again. A valid file, or an unchanged
+  file after eject, reboots into joystick mode as described above.
 - While the configuration drive is open the gamepad/keyboard are disconnected;
   joystick directions and fire buttons have no joystick or keyboard effect.
   Holding Small Fire 1 + Small Fire 2 for 3 seconds while in the drive
@@ -252,6 +253,16 @@ Edit [`config.h`](config.h) before building to change:
 - Config/firmware gesture buttons and hold times
 - Fast/slow report intervals and debounce time
 - Profile, status LED colors, and USB identity
+
+To build firmware that restores the embedded [`default_joystick.ini`](default_joystick.ini)
+once on its first boot, use:
+
+```sh
+./build-firmware.sh --overwrite-settings
+```
+
+Normal builds preserve saved settings. Use `./build-firmware.sh -h` for build
+options and environment variables.
 
 The default slow mode reports ordinary joystick input approximately every 80 ms. Autofire temporarily uses the fast report interval so its selected rate can be transmitted accurately.
 

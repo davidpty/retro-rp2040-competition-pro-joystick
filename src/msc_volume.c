@@ -102,17 +102,19 @@ static size_t format_ini(const joystick_settings_t *settings,
         "\r\n";
     static const char key[][12] = { "button1=", "button2=", "button3=", "button4=",
                                     "up=", "down=", "left=", "right=" };
-    static const char section[][12] = { "[RED]\r\n", "[GREEN]\r\n",
-                                        "[PURPLE]\r\n", "[YELLOW]\r\n" };
+    static const char section[][12] = { "[RED]\r\n", "[BLUE]\r\n",
+                                        "[GREEN]\r\n", "[YELLOW]\r\n" };
+    static const uint8_t profile_order[] = { 0, 2, 1, 3 };
     size_t used = 0;
     size_t hlen = sizeof(header) - 1;
     if (used + hlen > cap) return 0;
     memcpy(out + used, header, hlen);
     used += hlen;
-    for (unsigned p = 0; p < JOY_PROFILE_COUNT; ++p) {
-        size_t section_len = strlen(section[p]);
+    for (unsigned output = 0; output < JOY_PROFILE_COUNT; ++output) {
+        unsigned p = profile_order[output];
+        size_t section_len = strlen(section[output]);
         if (used + section_len > cap) return 0;
-        memcpy(out + used, section[p], section_len);
+        memcpy(out + used, section[output], section_len);
         used += section_len;
         for (unsigned i = 0; i < JOY_PROFILE_INPUT_COUNT; ++i) {
             const ini_binding_t *binding = i < JOY_BUTTON_COUNT

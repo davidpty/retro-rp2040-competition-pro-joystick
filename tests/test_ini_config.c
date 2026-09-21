@@ -12,7 +12,7 @@ static const char config_text[] =
     "button1=SHIFT+A\nbutton2=JOY1\nbutton3=CTRL+ALT+B:AUTOFIRE:250\nbutton4=NONE\n"
     "[GREEN]\nup=W\ndown=S\nleft=A\nright=D\n"
     "button1=JOY2\nbutton2=SPACE\nbutton3=SHIFT\nbutton4=NONE\n"
-    "[PURPLE]\nup=JOY1\ndown=JOY2\nleft=UP:AUTOFIRE\nright=RIGHT\n"
+    "[BLUE]\nup=JOY1\ndown=JOY2\nleft=UP:AUTOFIRE\nright=RIGHT\n"
     "button1=CTRL+F1\nbutton2=NONE\nbutton3=JOY3\nbutton4=Z\n"
     "[YELLOW]\nup=NONE\ndown=NONE\nleft=NONE\nright=NONE\n"
     "button1=A\nbutton2=B\nbutton3=C\nbutton4=D\n";

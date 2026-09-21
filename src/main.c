@@ -152,8 +152,21 @@ int main(void) {
     input_filter_init(&filter, joystick_gpio_snapshot(gpio_get_all()));
     joystick_settings_t settings;
     unsigned settings_slot;
-    joystick_settings_load_records(settings_flash_record(0), settings_flash_record(1),
-                                    &settings, &settings_slot);
+    bool settings_loaded = joystick_settings_load_records(
+        settings_flash_record(0), settings_flash_record(1), &settings, &settings_slot);
+    uint32_t settings_sequence = 0;
+    const joystick_settings_record_t *loaded_record = settings_flash_record(settings_slot);
+    if (settings_loaded && joystick_settings_record_valid(loaded_record)) {
+        settings_sequence = loaded_record->sequence;
+    }
+    bool overwrite_settings = false;
+#if JOY_SETTINGS_OVERWRITE
+    if (!settings_loaded || settings.settings_token != JOY_SETTINGS_OVERWRITE_TOKEN) {
+        joystick_settings_defaults(&settings);
+        settings.settings_token = JOY_SETTINGS_OVERWRITE_TOKEN;
+        overwrite_settings = true;
+    }
+#endif
     msc_disk_init(&settings, config_drive_enabled);
     status_led_set_profile(settings.active_profile);
     status_led_set_config_mode(config_drive_enabled);
@@ -163,10 +176,6 @@ int main(void) {
         status_led_startup_blink(settings.led_enabled,
                                  settings.speed == JOY_SPEED_SLOW);
     }
-    uint32_t settings_sequence = 0;
-    const joystick_settings_record_t *loaded_record = settings_flash_record(settings_slot);
-    if (joystick_settings_record_valid(loaded_record)) settings_sequence = loaded_record->sequence;
-
     autofire_state_t autofire;
     autofire_state_init(&autofire);
     autofire.hz = settings.rate_hz;
@@ -182,6 +191,13 @@ int main(void) {
     uint32_t save_retry_us = 0;
     uint32_t pending_save_offset = 0;
     uint8_t pending_save_page[FLASH_PAGE_SIZE];
+
+    if (overwrite_settings) {
+        queue_settings_save(&settings, settings_sequence, settings_slot,
+                            pending_save_page, &pending_save_offset, &save_pending);
+        finish_pending_save(pending_save_page, pending_save_offset, &save_pending,
+                            &settings_slot, &settings_sequence);
+    }
 
     tusb_rhport_init_t dev_init = { .role = TUSB_ROLE_DEVICE, .speed = TUSB_SPEED_AUTO };
     tusb_init(0, &dev_init);
@@ -277,7 +293,8 @@ int main(void) {
 
         /* Apply configuration written to the config drive: on idle after the
          * last write, or immediately when the host ejects the volume. A
-         * rejected file is reported before rebooting in either case. */
+         * rejected file is reported while keeping config mode available for
+         * correction. */
         if (msc_disk_enabled()) {
             bool eject_triggered = msc_disk_ejected();
             bool idle_triggered = msc_disk_modified() &&
@@ -292,7 +309,6 @@ int main(void) {
                     watchdog_reboot(0, 0, 0);
                 } else if (apply_result == CONFIG_APPLY_REJECTED) {
                     status_led_rejection_blink();
-                    watchdog_reboot(0, 0, 0);
                 }
             }
         }

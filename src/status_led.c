@@ -14,7 +14,7 @@ static uint32_t led_hold_color;
 static uint8_t led_profile;
 static bool led_config_mode;
 
-/* Profile palette; index selects Red, Green, Purple, or Yellow. */
+/* Profile palette; index selects Red, Green, Blue, or Yellow. */
 static const uint32_t profile_colors[JOY_PROFILE_COUNT] = {
     JOY_PROFILE_COLOR_0, JOY_PROFILE_COLOR_1,
     JOY_PROFILE_COLOR_2, JOY_PROFILE_COLOR_3

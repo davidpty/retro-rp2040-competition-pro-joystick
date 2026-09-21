@@ -98,6 +98,14 @@ static void test_profile_gesture(void) {
     uint32_t delay = JOY_GESTURE_ACTIVATION_DELAY_MS * 1000u;
     assert(!joystick_gesture_step(&gesture, input, 0, &settings));
     assert(joystick_gesture_step(&gesture, input, delay, &settings));
+    assert(settings.active_profile == 1 && gesture.suppress_output);
+
+    settings.active_profile = 0;
+    gesture = (gesture_state_t){0};
+    input = PRESSED(INPUT_SMALL_FIRE_1) | PRESSED(INPUT_SMALL_FIRE_2) |
+            PRESSED(INPUT_DOWN);
+    assert(!joystick_gesture_step(&gesture, input, 0, &settings));
+    assert(joystick_gesture_step(&gesture, input, delay, &settings));
     assert(settings.active_profile == 2 && gesture.suppress_output);
 }
 

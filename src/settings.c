@@ -35,6 +35,7 @@ void joystick_settings_defaults(joystick_settings_t *settings) {
     settings->rate_hz = JOY_AUTOFIRE_DEFAULT_HZ;
     settings->led_enabled = true;
     settings->active_profile = 0;
+    settings->settings_token = 0;
     if (!load_default_profiles(settings->profiles))
         memset(settings->profiles, 0, sizeof(settings->profiles));
 }
@@ -67,10 +68,10 @@ joystick_settings_record_t joystick_settings_record_make(
         .speed = (uint8_t)settings->speed,
         .rate_hz = settings->rate_hz,
         .led_enabled = settings->led_enabled ? 1u : 0u,
-        .reserved1 = 0,
+        .reserved1 = (uint8_t)(settings->settings_token & 0xffu),
         .profiles = {{{{0}}}},
         .active_profile = settings->active_profile,
-        .reserved2 = 0,
+        .reserved2 = (uint8_t)(settings->settings_token >> 8),
         .sequence = sequence,
         .crc32 = 0
     };
@@ -120,6 +121,8 @@ bool joystick_settings_load_records(const joystick_settings_record_t *first,
     settings->rate_hz = selected->rate_hz;
     settings->led_enabled = selected->led_enabled != 0;
     settings->active_profile = selected->active_profile;
+    settings->settings_token = (uint16_t)selected->reserved1 |
+                               (uint16_t)selected->reserved2 << 8;
     memcpy(settings->profiles, selected->profiles, sizeof(settings->profiles));
     if (slot) *slot = selected_slot;
     return true;

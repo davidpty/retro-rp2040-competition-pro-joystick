@@ -61,19 +61,19 @@
 #define JOY_LED_IDLE_COLOR      JOY_LED_RGB(0, 0, 0)       /* Off */
 
 /* Profile colors and their joystick-selection order. */
-#define JOY_PROFILE_COLOR_0   JOY_LED_RGB(255, 0, 0)       /* Red     - active profile */
+#define JOY_PROFILE_COLOR_0   JOY_LED_RGB(255, 0, 0)       /* Red - default profile */
 #define JOY_PROFILE_COLOR_1   JOY_LED_RGB(0, 255, 0)       /* Green */
-#define JOY_PROFILE_COLOR_2   JOY_LED_RGB(100, 0, 255)     /* Purple */
-#define JOY_PROFILE_COLOR_3   JOY_LED_RGB(255, 255, 0)     /* Yellow */
+#define JOY_PROFILE_COLOR_2   JOY_LED_RGB(0, 0, 255)       /* Blue */
+#define JOY_PROFILE_COLOR_3   JOY_LED_RGB(255, 200, 0)     /* Yellow */
 #define JOY_PROFILE_COUNT       4
 #define JOY_PROFILE_SLOW_BRIGHTNESS 0x33u  /* Slow polling dims the active profile color (20%) */
 
 /* Pure blue is the least visible WS2812 hue, so it is reserved for the least
  * used action: confirming config mode selection. Firmware update is the
  * bright, unmistakable white. */
-#define JOY_LED_CONFIG_COLOR   JOY_LED_RGB(0, 0, 255)       /* Blue: config mode selected */
-#define JOY_LED_FIRMWARE_COLOR JOY_LED_RGB(0, 51, 255)      /* Dim cyan: firmware update selected */
-#define JOY_LED_WARNING_COLOR  JOY_LED_RGB(255, 0, 0)       /* Red: rejected INI indication */
+#define JOY_LED_CONFIG_COLOR   JOY_LED_RGB(75, 0, 255)   /* Purple: config mode selected */
+#define JOY_LED_FIRMWARE_COLOR JOY_LED_RGB(200, 0, 255)   /* Magenta: firmware update selected */
+#define JOY_LED_WARNING_COLOR  JOY_LED_RGB(255, 0, 0  )   /* Red: rejected INI blinker */
 
 _Static_assert(JOY_LED_RGB(255, 0, 0) == 0x00ff0000u,
                "LED RGB packing must preserve red");
