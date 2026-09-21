@@ -48,6 +48,8 @@ typedef struct {
     uint8_t started_mask;
     uint8_t previous_inputs;
     uint8_t keyboard_tap_mask;
+    uint32_t next_press_order;
+    uint32_t press_order[INPUT_COUNT];
     uint32_t last_toggle_us;
     uint32_t input_last_toggle_us[INPUT_COUNT];
     uint32_t input_started_at_us[INPUT_COUNT];

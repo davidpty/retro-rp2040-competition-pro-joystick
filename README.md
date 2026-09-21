@@ -242,8 +242,9 @@ Notes:
   `up=DOWN`, `down=UP`, `left=RIGHT`, and `right=LEFT`.
 - Autofire takes priority once active: if an input with `:AUTOFIRE` or
   `:AUTOFIRE:500MS` and another input share the same output, the shared output
-  follows the autofire pattern after the delay has elapsed. Multiple autofire
-  inputs sharing one output combine their independent pulses.
+  follows the autofire pattern after the delay has elapsed. If multiple
+  autofire inputs share one output, the most recently pressed input controls it;
+  releasing that input falls back to the other still-held input.
 - The board reboots after an eject. If `JOYSTICK.INI` has changed the mapping,
   the new settings are used; an unchanged file exits config mode without an
   error indication.

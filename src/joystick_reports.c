@@ -47,6 +47,7 @@ void autofire_state_update(autofire_state_t *state, uint8_t inputs,
     for (unsigned input = 0; input < INPUT_COUNT; ++input) {
         const ini_binding_t *binding = input_binding(profile, input);
         uint8_t mask = (uint8_t)(1u << input);
+        if (newly_pressed & mask) state->press_order[input] = ++state->next_press_order;
         if ((newly_pressed & mask) && binding->type == INI_BIND_KEYBOARD &&
             !binding->autofire) state->keyboard_tap_mask |= mask;
         if (!binding->autofire || !(inputs & mask)) {
@@ -121,15 +122,40 @@ static bool binding_equal(const ini_binding_t *a, const ini_binding_t *b) {
     return a->type == b->type && a->value == b->value && a->modifier == b->modifier;
 }
 
+static bool autofire_input_is_newest(const autofire_state_t *state,
+                                     const joystick_profile_t *profile,
+                                     unsigned input, uint8_t inputs) {
+    const ini_binding_t *binding = input_binding(profile, input);
+    if (!binding->autofire || !joystick_input_pressed(inputs, (input_id_t)input))
+        return false;
+    for (unsigned other = 0; other < INPUT_COUNT; ++other) {
+        const ini_binding_t *candidate = input_binding(profile, other);
+        if (other != input && candidate->autofire &&
+            joystick_input_pressed(inputs, (input_id_t)other) &&
+            binding_equal(candidate, binding) &&
+            state->press_order[other] > state->press_order[input])
+            return false;
+    }
+    return true;
+}
+
+static bool autofire_input_pulse(const autofire_state_t *state, unsigned input) {
+    uint8_t mask = (uint8_t)(1u << input);
+    return (state->fixed_mask & mask)
+        ? (state->pulse_mask & mask) != 0
+        : state->global_pulse;
+}
+
 static bool binding_effective(const autofire_state_t *state,
                               const joystick_profile_t *profile,
                               unsigned input, uint8_t inputs) {
     const ini_binding_t *binding = input_binding(profile, input);
     if (!joystick_input_pressed(inputs, (input_id_t)input)) return false;
     if (!(state->ready_mask & (1u << input))) return true;
-    if (binding->autofire && (state->fixed_mask & (1u << input)))
-        return (state->pulse_mask & (1u << input)) != 0;
-    if (binding->autofire) return state->pulse;
+    if (binding->autofire) {
+        if (!autofire_input_is_newest(state, profile, input, inputs)) return false;
+        return autofire_input_pulse(state, input);
+    }
     for (unsigned other = 0; other < INPUT_COUNT; ++other) {
         const ini_binding_t *candidate = input_binding(profile, other);
         if (other != input && candidate->autofire &&

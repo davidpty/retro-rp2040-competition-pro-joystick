@@ -224,6 +224,44 @@ static void test_factory_profile_autofire(void) {
     assert(!state.pulse);
 }
 
+static void test_shared_autofire_latest_pressed_fallback(void) {
+    joystick_settings_t settings;
+    joystick_settings_defaults(&settings);
+    joystick_profile_t *profile = &settings.profiles[JOY_PROFILE_RED];
+    uint8_t fixed_rates[JOY_PROFILE_INPUT_COUNT];
+    memcpy(fixed_rates, settings.autofire_hz[JOY_PROFILE_RED], sizeof(fixed_rates));
+    autofire_state_t state;
+    autofire_state_init(&state);
+
+    uint8_t small_1 = PRESSED(INPUT_SMALL_FIRE_1);
+    uint8_t small_2 = PRESSED(INPUT_SMALL_FIRE_2);
+    uint8_t both = small_1 | small_2;
+
+    /* Small Fire 2 is pressed last, so its fixed 5 Hz clock owns JOY1. */
+    autofire_state_update(&state, small_1, profile, fixed_rates, 1000);
+    autofire_state_update(&state, both, profile, fixed_rates, 2000);
+    assert(joystick_make_report(&state, both, profile, false).buttons == 1);
+    autofire_state_update(&state, both, profile, fixed_rates, 102000);
+    assert(joystick_make_report(&state, both, profile, false).buttons == 0);
+
+    /* Releasing Small Fire 2 restores Small Fire 1's adjustable autofire. */
+    autofire_state_update(&state, small_1, profile, fixed_rates, 103000);
+    assert(joystick_make_report(&state, small_1, profile, false).buttons == 1);
+    autofire_state_update(&state, small_1, profile, fixed_rates, 128000);
+    assert(joystick_make_report(&state, small_1, profile, false).buttons == 0);
+
+    /* In the reverse order, releasing Small Fire 1 restores fixed autofire. */
+    autofire_state_init(&state);
+    autofire_state_update(&state, small_2, profile, fixed_rates, 200000);
+    autofire_state_update(&state, both, profile, fixed_rates, 201000);
+    autofire_state_update(&state, both, profile, fixed_rates, 301000);
+    assert(joystick_make_report(&state, both, profile, false).buttons == 1);
+    autofire_state_update(&state, small_2, profile, fixed_rates, 302000);
+    assert(joystick_make_report(&state, small_2, profile, false).buttons == 1);
+    autofire_state_update(&state, small_2, profile, fixed_rates, 402000);
+    assert(joystick_make_report(&state, small_2, profile, false).buttons == 0);
+}
+
 static void test_runtime_step_autofire_transitions(void) {
     joystick_settings_t settings;
     joystick_settings_defaults(&settings);
@@ -363,6 +401,7 @@ int test_joystick_main(void) {
     test_autofire_all_input_types();
     test_delayed_autofire();
     test_factory_profile_autofire();
+    test_shared_autofire_latest_pressed_fallback();
     test_runtime_step_autofire_transitions();
     test_profile_gesture();
     test_rate_adjustment_led();
