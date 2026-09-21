@@ -92,7 +92,7 @@ static void build_root_directory(uint8_t block[MSC_DISK_BLOCK_SIZE],
 static size_t format_ini(const joystick_settings_t *settings,
                          uint8_t *out, size_t cap) {
     static const char header[] =
-        "; Retro 2040 Competition Pro configuration\r\n"
+        "; Retro RP2040 Competition Pro configuration\r\n"
         "; Each direction and button accepts one output, or NONE to disable it.\r\n"
         "; Joystick: UP DOWN LEFT RIGHT. Gamepad: JOY1 JOY2 JOY3 JOY4.\r\n"
         "; Keyboard: A-Z, 0-9, ENTER ESC BACKSPACE TAB SPACE, or F1-F12.\r\n"

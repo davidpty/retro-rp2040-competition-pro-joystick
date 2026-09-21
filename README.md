@@ -6,14 +6,14 @@ The original switches and enclosure can be kept while the firmware adds faster i
 
 ### Key features
 
-- Four persistent button-mapping profiles named Red, Green, Purple, and Yellow.
+- Four persistent button-mapping profiles shown via LED Red, Green, Purple, and Yellow.
 - Each profile can assign all four fire buttons and all four directions to joystick directions, gamepad buttons, keyboard keys, or keyboard combinations.
-- Optional autofire can be assigned to any mapped input, including directions.
+- Optional autofire can be assigned to any mapped input.
 - Hold both small buttons and move the joystick Up, Down, Left, or Right to select a profile.
 - Fast polling for responsive games and slow polling for compatibility with older systems.
 - A simple USB configuration drive for editing all four profiles without rebuilding the firmware.
 - Status LED feedback for the active mapping, autofire, configuration mode, and compatibility mode.
-- Settings are saved across reboots, with a factory reset that restores only the Red mapping and leaves the other profiles untouched.
+- Settings are saved across reboots, with a factory reset that restores the default profile mapping and leaves the other profiles untouched.
 
 ## Download the firmware
 
