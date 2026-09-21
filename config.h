@@ -74,13 +74,13 @@ typedef enum {
 #define JOY_PROFILE_COLOR_0   JOY_LED_RGB(255, 0, 0)       /* Red - default profile */
 #define JOY_PROFILE_COLOR_1   JOY_LED_RGB(0, 255, 0)       /* Green */
 #define JOY_PROFILE_COLOR_2   JOY_LED_RGB(0, 0, 255)       /* Blue */
-#define JOY_PROFILE_COLOR_3   JOY_LED_RGB(255, 200, 0)     /* Yellow */
+#define JOY_PROFILE_COLOR_3   JOY_LED_RGB(255, 255, 0)     /* Yellow */
 #define JOY_PROFILE_SLOW_BRIGHTNESS 0x33u  /* Slow polling dims the active profile color (20%) */
 
 /* Cyan is reserved for the configuration drive so it remains bright and
  * clearly distinct from the profile colors. Firmware update uses a bright,
  * unmistakable magenta. */
-#define JOY_LED_CONFIG_COLOR   JOY_LED_RGB(0, 255, 255)  /* Cyan: config mode selected */
+#define JOY_LED_CONFIG_COLOR   JOY_LED_RGB(0, 200, 255)  /* Cyan: config mode selected */
 #define JOY_LED_FIRMWARE_COLOR JOY_LED_RGB(255, 0, 255)  /* Magenta: firmware update selected */
 #define JOY_LED_WARNING_COLOR  JOY_LED_RGB(255, 0, 0  )  /* Red: rejected INI blinker */
 
