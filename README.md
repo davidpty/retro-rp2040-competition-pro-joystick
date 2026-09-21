@@ -108,7 +108,7 @@ The four profiles are named after their colors: Red, Blue, Green, and Yellow.
 | Profile color | Active profile: any fire button held |
 | Profile color dimmed | Slow compatibility polling mode active |
 | Profile color pulsing | An autofire input is held; pulse rate matches the configured autofire rate |
-| Purple | Configuration drive is active |
+| Cyan | Configuration drive is active |
 | Magenta | Firmware update selected at 6 s while Small Fire 1 + 2 remain held |
 | Three red flashes | A rejected or incomplete `JOYSTICK.INI` before reboot |
 | Off | Idle, or LED feedback toggled off |
@@ -226,7 +226,7 @@ delays range from 1 to 60000 ms and frequencies from 1 to 100 Hz.
 
 3. Save and unmount (or eject) the drive. After about a second the board
    applies the new mapping and reboots automatically into joystick mode. The
-   LED remains purple while the configuration drive is active.
+   LED remains cyan while the configuration drive is active.
 
 Notes:
 

@@ -68,12 +68,12 @@
 #define JOY_PROFILE_COUNT       4
 #define JOY_PROFILE_SLOW_BRIGHTNESS 0x33u  /* Slow polling dims the active profile color (20%) */
 
-/* Pure blue is the least visible WS2812 hue, so it is reserved for the least
- * used action: confirming config mode selection. Firmware update is the
- * bright, unmistakable white. */
-#define JOY_LED_CONFIG_COLOR   JOY_LED_RGB(75, 0, 255)   /* Purple: config mode selected */
-#define JOY_LED_FIRMWARE_COLOR JOY_LED_RGB(200, 0, 255)   /* Magenta: firmware update selected */
-#define JOY_LED_WARNING_COLOR  JOY_LED_RGB(255, 0, 0  )   /* Red: rejected INI blinker */
+/* Cyan is reserved for the configuration drive so it remains bright and
+ * clearly distinct from the profile colors. Firmware update uses a bright,
+ * unmistakable magenta. */
+#define JOY_LED_CONFIG_COLOR   JOY_LED_RGB(0, 50, 255)   /* Cyan: config mode selected */
+#define JOY_LED_FIRMWARE_COLOR JOY_LED_RGB(150, 0, 255)  /* Magenta: firmware update selected */
+#define JOY_LED_WARNING_COLOR  JOY_LED_RGB(255, 0, 0  )  /* Red: rejected INI blinker */
 
 _Static_assert(JOY_LED_RGB(255, 0, 0) == 0x00ff0000u,
                "LED RGB packing must preserve red");
