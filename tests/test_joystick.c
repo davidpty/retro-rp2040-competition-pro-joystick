@@ -39,14 +39,15 @@ static void test_defaults_and_axis_reports(void) {
     joystick_settings_defaults(&settings);
     joystick_profile_t *profile = &settings.profiles[0];
     assert(profile->button[0].type == INI_BIND_GAMEPAD &&
-           profile->button[0].value == 1 && profile->button[0].autofire &&
-           profile->button[0].autofire_delay_ms == 500);
+           profile->button[0].value == 1 && !profile->button[0].autofire &&
+           profile->button[0].autofire_delay_ms == 0 &&
+           settings.autofire_hz[0][JOY_DIRECTION_COUNT] == 0);
     assert(profile->button[1].type == INI_BIND_KEYBOARD &&
            profile->button[1].value == INI_CODE_SPACE &&
            !profile->button[1].autofire);
     assert(profile->button[2].type == INI_BIND_GAMEPAD &&
            profile->button[2].value == 1 && profile->button[2].autofire &&
-           settings.autofire_hz[0][JOY_DIRECTION_COUNT + 2] == 25);
+           settings.autofire_hz[0][JOY_DIRECTION_COUNT + 2] == 0);
     assert(profile->button[3].type == INI_BIND_GAMEPAD &&
            profile->button[3].value == 1 && profile->button[3].autofire &&
            settings.autofire_hz[0][JOY_DIRECTION_COUNT + 3] == 5);
@@ -170,15 +171,15 @@ static void test_factory_profile_autofire(void) {
     joystick_settings_defaults(&settings);
     autofire_state_t state = {0};
 
-    /* RED button 1: delayed adjustable autofire. */
-    joystick_profile_t *profile = &settings.profiles[0];
+    /* YELLOW button 1: delayed fixed-rate autofire. */
+    joystick_profile_t *profile = &settings.profiles[3];
     uint8_t input = PRESSED(INPUT_BIG_FIRE_1);
-    autofire_state_update(&state, input, profile, settings.autofire_hz[0], 1000);
+    autofire_state_update(&state, input, profile, settings.autofire_hz[3], 1000);
     assert(!state.active);
-    autofire_state_update(&state, input, profile, settings.autofire_hz[0], 501000);
+    autofire_state_update(&state, input, profile, settings.autofire_hz[3], 501000);
     assert(state.active && state.pulse);
     assert(joystick_make_report(&state, input, profile, false).buttons == 1);
-    autofire_state_update(&state, input, profile, settings.autofire_hz[0], 526000);
+    autofire_state_update(&state, input, profile, settings.autofire_hz[3], 521000);
     assert(!state.pulse);
     assert(joystick_make_report(&state, input, profile, false).buttons == 0);
 
@@ -211,38 +212,48 @@ static void test_factory_profile_autofire(void) {
     autofire_state_update(&state, input, profile, settings.autofire_hz[0], 121000);
     assert(!state.pulse);
     assert(joystick_make_report(&state, input, profile, false).buttons == 0);
+
+    /* RED button 3: immediate adjustable-rate autofire. */
+    profile = &settings.profiles[0];
+    state = (autofire_state_t){ .hz = settings.rate_hz };
+    input = PRESSED(INPUT_SMALL_FIRE_1);
+    autofire_state_update(&state, input, profile, settings.autofire_hz[0], 1000);
+    assert(state.active && state.pulse);
+    autofire_state_update(&state, input, profile, settings.autofire_hz[0],
+                          1000 + 500000u / settings.rate_hz);
+    assert(!state.pulse);
 }
 
 static void test_runtime_step_autofire_transitions(void) {
     joystick_settings_t settings;
     joystick_settings_defaults(&settings);
-    joystick_profile_t *profile = &settings.profiles[0];
+    joystick_profile_t *profile = &settings.profiles[3];
     autofire_state_t state;
     autofire_state_init(&state);
     uint8_t input = PRESSED(INPUT_BIG_FIRE_1);
 
     /* This follows the same single-sample operation used by main(). */
     joystick_runtime_output_t output = joystick_runtime_step(
-        &state, input, profile, settings.autofire_hz[0], settings.speed,
+        &state, input, profile, settings.autofire_hz[3], settings.speed,
         true, false, 1000);
     assert(!output.autofire_held);
     assert(output.joystick.buttons == 1);
     assert(output.led_active);
 
     output = joystick_runtime_step(
-        &state, input, profile, settings.autofire_hz[0], settings.speed,
+        &state, input, profile, settings.autofire_hz[3], settings.speed,
         true, false, 501000);
     assert(output.autofire_held && output.joystick.buttons == 1);
     assert(output.led_active);
 
     output = joystick_runtime_step(
-        &state, input, profile, settings.autofire_hz[0], settings.speed,
+        &state, input, profile, settings.autofire_hz[3], settings.speed,
         true, false, 526000);
     assert(output.autofire_held && output.joystick.buttons == 0);
     assert(!output.led_active);
 
     output = joystick_runtime_step(
-        &state, 0, profile, settings.autofire_hz[0], settings.speed,
+        &state, 0, profile, settings.autofire_hz[3], settings.speed,
         false, false, 527000);
     assert(!output.autofire_held && output.joystick.buttons == 0);
     assert(!output.led_active);

@@ -42,9 +42,9 @@ Default USB mapping:
 
 | Physical control | USB output |
 |---|---|
-| Big Fire 1 | `JOY1` autofire after 500 ms |
+| Big Fire 1 | Normal `JOY1` button |
 | Big Fire 2 | `SPACE` keyboard key |
-| Small Fire 1 | Fixed 25 Hz `JOY1` autofire |
+| Small Fire 1 | Adjustable-rate `JOY1` autofire |
 | Small Fire 2 | Fixed 5 Hz `JOY1` autofire |
 
 Every output can be remapped at runtime through the built-in configuration
@@ -92,10 +92,10 @@ keys depending on the configured codes.
 
 - The default mode reports input quickly, approximately every 1 ms.
 - Direction pairs report center when both directions on the same axis are pressed.
-- By default Big Fire 1 autofires `JOY1` after 500 ms at the adjustable global
-  rate. Small Fire 1 provides fixed 25 Hz autofire and Small Fire 2 provides
-  fixed 5 Hz autofire. The default global rate is 20 Hz and can be adjusted
-  from 1–100 Hz; autofire can be moved to any output via the config drive.
+- By default Big Fire 1 emits normal `JOY1`. Small Fire 1 provides adjustable
+  autofire and Small Fire 2 provides fixed 5 Hz autofire. The default global
+  rate is 20 Hz and can be adjusted from 1–100 Hz for mappings without a fixed
+  `:HZ` value; autofire can be moved to any output via the config drive.
 - The USB identity is manufacturer `Retro 2040`, product `Competition Pro`, with the board ID as its serial number.
 
 ### Status LED
@@ -160,10 +160,10 @@ delays range from 1 to 60000 ms and frequencies from 1 to 100 Hz.
 
    ```ini
    [RED]
-   button1=JOY1:AUTOFIRE:500MS ; Adjustable global rate after 500 ms
+   button1=JOY1                ; Normal A / Big Fire 1
    button2=SPACE                ; Keyboard key for Big Fire 2
-   button3=JOY1:AUTOFIRE:25HZ   ; Fixed fast autofire for Small Fire 1
-   button4=JOY1:AUTOFIRE:5HZ    ; Fixed slow autofire for Small Fire 2
+   button3=JOY1:AUTOFIRE        ; Adjustable autofire for Small Fire 1
+   button4=JOY1:AUTOFIRE:5HZ   ; Fixed slow autofire for Small Fire 2
    up=UP
    down=DOWN
    left=LEFT
