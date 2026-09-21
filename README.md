@@ -2,20 +2,20 @@
 
 Turn a classic C64, Amiga, Atari, Competition Pro, or other DE-9 joystick into a modern USB controller with an RP2040-Zero.
 
-The original switches and enclosure can be kept while the firmware adds faster input response and flexible controls for computers, games, and emulators. It can send button presses to a USB gamepad, type keyboard keys, or do both depending on the selected mapping.
+The original switches and enclosure can be kept while the firmware adds faster input response and flexible controls for computers, games, and emulators. It can send button presses, type keyboard keys, or do both depending on the selected mapping.
 
 ![Joystick](joystick.png)
 
 ### Key features
 
-- Four persistent button-mapping profiles shown via LED Red, Green, Blue, and Yellow.
+- Four persistent button-mapping profiles shown via LED.
 - Each profile can assign all four fire buttons and all four directions to joystick directions, gamepad buttons, keyboard keys, or keyboard combinations.
-- Optional autofire can be assigned to any mapped input, either immediately or after a configurable hold delay.
+- Optional autofire can be assigned to any mapped input, either immediately or after a configurable hold delay with adjustable autofire frequencies.
 - Hold both small buttons and move the joystick Up, Down, Left, or Right to select a profile.
 - Fast polling for responsive games and slow polling for compatibility with older systems.
 - A simple USB configuration drive for editing all four profiles without rebuilding the firmware.
 - Status LED feedback for the active mapping, autofire, configuration mode, and compatibility mode.
-- Settings are saved across reboots, with a factory reset that restores the default profile mapping and leaves the other profiles untouched.
+- Settings are saved across reboots, with a factory reset that restores the default profile mapping.
 
 ## Download the firmware
 
@@ -50,7 +50,7 @@ Default USB mapping:
 | Small Fire 2 | Fixed 5 Hz `JOY1` autofire |
 
 Every output can be remapped at runtime through the built-in configuration
-drive — see [Configuring the mappings](#configuring-the-mappings).
+drive - see [Configuring the mappings](#configuring-the-mappings).
 
 ### 2. Build the firmware
 
@@ -93,7 +93,6 @@ buttons, and a **keyboard**. Fire buttons map to gamepad buttons or keyboard
 keys depending on the configured codes.
 
 - The default mode reports input quickly, approximately every 1 ms.
-- Direction pairs report center when both directions on the same axis are pressed.
 - By default Big Fire 1 emits normal `JOY1`. Small Fire 1 provides adjustable
   autofire and Small Fire 2 provides fixed 5 Hz autofire. The default global
   rate is 20 Hz and can be adjusted from 1–100 Hz for mappings without a fixed
@@ -102,7 +101,7 @@ keys depending on the configured codes.
 
 ### Status LED
 
-The onboard RGB LED mostly shows the active profile color at full brightness.
+The onboard RGB LED shows the active profile color.
 The four profiles are named after their colors: Red, Blue, Green, and Yellow.
 
 | LED | Meaning |
@@ -110,7 +109,7 @@ The four profiles are named after their colors: Red, Blue, Green, and Yellow.
 | Profile color | Active profile: any fire button held |
 | Profile color dimmed | Slow compatibility polling mode active |
 | Profile color pulsing | An autofire input is held; pulse rate matches the configured autofire rate |
-| Cyan | Configuration drive is active |
+| Cyan | Configuration drive selected at 3 s while Small Fire 1 + 2 remain held |
 | Magenta | Firmware update selected at 6 s while Small Fire 1 + 2 remain held |
 | Three red flashes | A rejected or incomplete `JOYSTICK.INI` before reboot |
 | Off | Idle, or LED feedback toggled off |
