@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "joystick.h"
+#include "joystick_types.h"
 #include "msc_volume.h"
 
 void msc_disk_init(const joystick_settings_t *settings, bool config_drive);

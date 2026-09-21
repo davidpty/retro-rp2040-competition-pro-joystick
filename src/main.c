@@ -4,7 +4,6 @@
 
 #include "pico/stdlib.h"
 #include "pico/bootrom.h"
-#include "pico/flash.h"
 #include "hardware/gpio.h"
 #include "hardware/flash.h"
 #include "hardware/watchdog.h"
@@ -12,10 +11,14 @@
 #include "bsp/board_api.h"
 #include "tusb.h"
 #include "config.h"
-#include "ini_config.h"
-#include "joystick.h"
+#include "config_service.h"
+#include "joystick_autofire.h"
+#include "joystick_gestures.h"
+#include "joystick_input.h"
+#include "joystick_reports.h"
 #include "msc_disk.h"
 #include "settings.h"
+#include "settings_store.h"
 #include "status_led.h"
 #include "usb_descriptors.h"
 
@@ -31,103 +34,6 @@ static void init_inputs(void) {
 static bool update_buttons_pressed(uint8_t inputs) {
     return joystick_gpio_pressed(inputs, JOY_UPDATE_GPIO_A) &&
            joystick_gpio_pressed(inputs, JOY_UPDATE_GPIO_B);
-}
-
-#define SETTINGS_SECTOR_SIZE 4096u
-#define SETTINGS_FLASH_BASE (PICO_FLASH_SIZE_BYTES - 2u * SETTINGS_SECTOR_SIZE)
-static const joystick_settings_record_t *settings_flash_record(unsigned slot) {
-    uintptr_t address = XIP_BASE + SETTINGS_FLASH_BASE + slot * SETTINGS_SECTOR_SIZE;
-    return (const joystick_settings_record_t *)address;
-}
-
-typedef struct {
-    uint32_t offset;
-    const uint8_t *page;
-} settings_flash_write_t;
-
-static void __not_in_flash_func(settings_flash_write_callback)(void *param) {
-    settings_flash_write_t *write = (settings_flash_write_t *)param;
-    flash_range_erase(write->offset, SETTINGS_SECTOR_SIZE);
-    flash_range_program(write->offset, write->page, FLASH_PAGE_SIZE);
-}
-
-static int settings_save_page(uint32_t offset, const uint8_t *page) {
-    settings_flash_write_t write = { .offset = offset, .page = page };
-    return flash_safe_execute(settings_flash_write_callback, &write, 100);
-}
-
-static void queue_settings_save(const joystick_settings_t *settings,
-                                uint32_t sequence, unsigned active_slot,
-                                uint8_t *page, uint32_t *offset,
-                                bool *pending) {
-    joystick_settings_record_t record =
-        joystick_settings_record_make(settings, sequence + 1u);
-    memset(page, 0xff, FLASH_PAGE_SIZE);
-    memcpy(page, &record, sizeof(record));
-    *offset = SETTINGS_FLASH_BASE + (active_slot ^ 1u) * SETTINGS_SECTOR_SIZE;
-    *pending = true;
-}
-
-static void finish_pending_save(uint8_t *page, uint32_t offset, bool *pending,
-                                unsigned *active_slot, uint32_t *sequence) {
-    if (settings_save_page(offset, page) == 0) {
-        *active_slot ^= 1u;
-        ++*sequence;
-        *pending = false;
-    }
-}
-
-/* Inspect a host-written JOYSTICK.INI from the config drive and classify it.
- * Changed settings are persisted to flash before returning. */
-typedef enum {
-    CONFIG_APPLY_REJECTED,
-    CONFIG_APPLY_UNCHANGED,
-    CONFIG_APPLY_CHANGED,
-} config_apply_result_t;
-
-static config_apply_result_t config_apply(const joystick_settings_t *current) {
-    const msc_volume_t *volume = msc_disk_volume();
-    uint8_t data[2 * MSC_DISK_BLOCK_SIZE];
-    size_t length = msc_volume_read_ini(volume, data, sizeof(data));
-    ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT];
-    config_apply_result_t result = CONFIG_APPLY_REJECTED;
-    uint8_t rates[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT] = {{0}};
-    if (ini_config_parse_with_rates(data, length, bindings, rates)) {
-        joystick_settings_t parsed = *current;
-        for (unsigned p = 0; p < JOY_PROFILE_COUNT; ++p) {
-            memcpy(parsed.profiles[p].direction, bindings[p],
-                   sizeof(parsed.profiles[p].direction));
-            memcpy(parsed.profiles[p].button, bindings[p] + JOY_DIRECTION_COUNT,
-                   sizeof(parsed.profiles[p].button));
-            memcpy(parsed.autofire_hz[p], rates[p], sizeof(parsed.autofire_hz[p]));
-        }
-        if (joystick_settings_equal(&parsed, current)) {
-            result = CONFIG_APPLY_UNCHANGED;
-        } else {
-            uint8_t page[FLASH_PAGE_SIZE];
-            uint32_t offset;
-            bool pending;
-            unsigned slot = 0;
-            uint32_t sequence = 0;
-            const joystick_settings_record_t *loaded =
-                settings_flash_record(0);
-            if (joystick_settings_record_valid(loaded)) {
-                slot = 0;
-                sequence = loaded->sequence;
-            }
-            loaded = settings_flash_record(1);
-            if (joystick_settings_record_valid(loaded) &&
-                (int32_t)(loaded->sequence - sequence) > 0) {
-                slot = 1;
-                sequence = loaded->sequence;
-            }
-            queue_settings_save(&parsed, sequence, slot, page, &offset, &pending);
-            finish_pending_save(page, offset, &pending, &slot, &sequence);
-            if (!pending) result = CONFIG_APPLY_CHANGED;
-        }
-    }
-    msc_disk_ack();
-    return result;
 }
 
 static void reboot_into_config_mode(void) {
@@ -188,17 +94,14 @@ int main(void) {
     gesture_state_t gesture_state = {0};
     joystick_keyboard_report_t last_keyboard = {0};
     uint32_t next_report_us = time_us_32();
-    bool save_pending = false;
     uint8_t pending_release_mask = 0;
     uint32_t save_retry_us = 0;
-    uint32_t pending_save_offset = 0;
-    uint8_t pending_save_page[FLASH_PAGE_SIZE];
+    settings_store_t settings_store;
+    settings_store_init(&settings_store, settings_slot, settings_sequence);
 
     if (overwrite_settings) {
-        queue_settings_save(&settings, settings_sequence, settings_slot,
-                            pending_save_page, &pending_save_offset, &save_pending);
-        finish_pending_save(pending_save_page, pending_save_offset, &save_pending,
-                            &settings_slot, &settings_sequence);
+        settings_store_queue(&settings_store, &settings);
+        settings_store_finish(&settings_store);
     }
 
     tusb_rhport_init_t dev_init = { .role = TUSB_ROLE_DEVICE, .speed = TUSB_SPEED_AUTO };
@@ -239,9 +142,7 @@ int main(void) {
                 autofire.hz = settings.rate_hz;
                 status_led_set_profile(settings.active_profile);
                 pending_release_mask = gesture_state.release_mask;
-                queue_settings_save(&settings, settings_sequence, settings_slot,
-                                    pending_save_page, &pending_save_offset,
-                                    &save_pending);
+                settings_store_queue(&settings_store, &settings);
             }
             factory_reset_triggered = factory_reset_step(
                 &factory_reset, all_fire_pressed, now_us);
@@ -254,10 +155,8 @@ int main(void) {
             } else {
                 boot_action = boot_mode_step(&boot_mode, update_held, now_us);
             }
-            if (boot_action != BOOT_MODE_NONE && save_pending) {
-                finish_pending_save(pending_save_page, pending_save_offset,
-                                    &save_pending, &settings_slot,
-                                    &settings_sequence);
+            if (boot_action != BOOT_MODE_NONE && settings_store_pending(&settings_store)) {
+                settings_store_finish(&settings_store);
             }
             if (boot_action == BOOT_MODE_CONFIG) {
                 reboot_into_config_mode();
@@ -274,20 +173,16 @@ int main(void) {
             settings.speed = defaults.speed;
             settings.rate_hz = defaults.rate_hz;
             settings.led_enabled = defaults.led_enabled;
-            joystick_settings_reset_profile(&settings, 0);
-            joystick_settings_select_profile(&settings, 0);
+            joystick_settings_reset_profile(&settings, JOY_PROFILE_RED);
+            joystick_settings_select_profile(&settings, JOY_PROFILE_RED);
             status_led_set_profile(settings.active_profile);
             autofire.hz = settings.rate_hz;
-            queue_settings_save(&settings, settings_sequence, settings_slot,
-                                pending_save_page, &pending_save_offset,
-                                &save_pending);
+            settings_store_queue(&settings_store, &settings);
             pending_release_mask = (uint8_t)((1u << INPUT_BIG_FIRE_1) |
                                              (1u << INPUT_BIG_FIRE_2) |
                                              (1u << INPUT_SMALL_FIRE_1) |
                                              (1u << INPUT_SMALL_FIRE_2));
-            finish_pending_save(pending_save_page, pending_save_offset,
-                                &save_pending, &settings_slot,
-                                &settings_sequence);
+            settings_store_finish(&settings_store);
             msc_disk_rebuild(&settings);
             status_led_startup_blink(true, false);
             factory_reset_led_holdoff = true;
@@ -305,7 +200,7 @@ int main(void) {
             bool fire_combo_engaged = (unsigned)big_fire_1 + (unsigned)big_fire_2 +
                                       (unsigned)small_fire_1 + (unsigned)small_fire_2 > 1u;
             if ((eject_triggered || idle_triggered) && !fire_combo_engaged) {
-                config_apply_result_t apply_result = config_apply(&settings);
+                config_apply_result_t apply_result = config_service_apply(&settings);
                 if (apply_result == CONFIG_APPLY_CHANGED ||
                     (eject_triggered && apply_result == CONFIG_APPLY_UNCHANGED)) {
                     watchdog_reboot(0, 0, 0);
@@ -364,13 +259,12 @@ int main(void) {
         bool gesture_pair_released =
             pending_release_mask != 0 &&
             (inputs & pending_release_mask) != pending_release_mask;
-        if (!config_drive_enabled && !post_reboot_input_guard && save_pending &&
+        if (!config_drive_enabled && !post_reboot_input_guard &&
+            settings_store_pending(&settings_store) &&
             gesture_pair_released &&
             (int32_t)(now_us - save_retry_us) >= 0) {
-            finish_pending_save(pending_save_page, pending_save_offset,
-                                &save_pending, &settings_slot,
-                                &settings_sequence);
-            if (save_pending) save_retry_us = now_us + 100000u;
+            settings_store_finish(&settings_store);
+            if (settings_store_pending(&settings_store)) save_retry_us = now_us + 100000u;
         }
     }
 }

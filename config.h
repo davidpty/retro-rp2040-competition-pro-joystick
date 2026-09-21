@@ -60,12 +60,21 @@
 
 #define JOY_LED_IDLE_COLOR      JOY_LED_RGB(0, 0, 0)       /* Off */
 
+/* Internal profile identity/order. The INI serializer may present profiles in
+ * a different human-facing order, but these values are stable in settings. */
+typedef enum {
+    JOY_PROFILE_RED = 0,
+    JOY_PROFILE_GREEN,
+    JOY_PROFILE_BLUE,
+    JOY_PROFILE_YELLOW,
+    JOY_PROFILE_COUNT
+} joy_profile_id_t;
+
 /* Profile colors and their joystick-selection order. */
 #define JOY_PROFILE_COLOR_0   JOY_LED_RGB(255, 0, 0)       /* Red - default profile */
 #define JOY_PROFILE_COLOR_1   JOY_LED_RGB(0, 255, 0)       /* Green */
 #define JOY_PROFILE_COLOR_2   JOY_LED_RGB(0, 0, 255)       /* Blue */
 #define JOY_PROFILE_COLOR_3   JOY_LED_RGB(255, 200, 0)     /* Yellow */
-#define JOY_PROFILE_COUNT       4
 #define JOY_PROFILE_SLOW_BRIGHTNESS 0x33u  /* Slow polling dims the active profile color (20%) */
 
 /* Cyan is reserved for the configuration drive so it remains bright and

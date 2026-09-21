@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "joystick.h"
+#include "joystick_types.h"
 
 #define MSC_DISK_BLOCK_NUM  16u
 #define MSC_DISK_BLOCK_SIZE 512u

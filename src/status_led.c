@@ -11,13 +11,15 @@ static uint led_sm;
 static uint32_t led_color;
 static uint32_t led_last_tx_us;
 static uint32_t led_hold_color;
-static uint8_t led_profile;
+static joy_profile_id_t led_profile;
 static bool led_config_mode;
 
 /* Profile palette; index selects Red, Green, Blue, or Yellow. */
 static const uint32_t profile_colors[JOY_PROFILE_COUNT] = {
-    JOY_PROFILE_COLOR_0, JOY_PROFILE_COLOR_1,
-    JOY_PROFILE_COLOR_2, JOY_PROFILE_COLOR_3
+    [JOY_PROFILE_RED] = JOY_PROFILE_COLOR_0,
+    [JOY_PROFILE_GREEN] = JOY_PROFILE_COLOR_1,
+    [JOY_PROFILE_BLUE] = JOY_PROFILE_COLOR_2,
+    [JOY_PROFILE_YELLOW] = JOY_PROFILE_COLOR_3
 };
 
 static uint32_t profile_color(void) {
@@ -47,7 +49,7 @@ static void status_led_send_blocking(uint32_t color) {
 }
 
 void status_led_set_profile(uint8_t index) {
-    led_profile = index < JOY_PROFILE_COUNT ? index : 0;
+    led_profile = index < JOY_PROFILE_COUNT ? (joy_profile_id_t)index : JOY_PROFILE_RED;
 }
 
 void status_led_startup_blink(bool led_enabled, bool slow_mode) {

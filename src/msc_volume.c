@@ -13,6 +13,10 @@
 #define MSC_RESERVED        1u
 #define MSC_DATA_START_LBA  (MSC_RESERVED + MSC_FAT_SECTORS + \
                              MSC_ROOT_ENTRIES * 32u / MSC_DISK_BLOCK_SIZE)
+#define MSC_DATA_SECTOR_COUNT (MSC_DISK_BLOCK_NUM - MSC_DATA_START_LBA)
+
+_Static_assert(MSC_DATA_START_LBA < MSC_DISK_BLOCK_NUM,
+               "MSC image must contain data sectors");
 
 static void put_le16(uint8_t *p, uint16_t v) {
     p[0] = (uint8_t)v;
@@ -104,7 +108,9 @@ static size_t format_ini(const joystick_settings_t *settings,
                                     "up=", "down=", "left=", "right=" };
     static const char section[][12] = { "[RED]\r\n", "[BLUE]\r\n",
                                         "[GREEN]\r\n", "[YELLOW]\r\n" };
-    static const uint8_t profile_order[] = { 0, 2, 1, 3 };
+    static const uint8_t profile_order[] = {
+        JOY_PROFILE_RED, JOY_PROFILE_BLUE, JOY_PROFILE_GREEN, JOY_PROFILE_YELLOW
+    };
     size_t used = 0;
     size_t hlen = sizeof(header) - 1;
     if (used + hlen > cap) return 0;
@@ -143,7 +149,7 @@ static size_t format_ini(const joystick_settings_t *settings,
 
 void msc_volume_rebuild(msc_volume_t *volume, const joystick_settings_t *settings) {
     build_boot_sector(volume->disk[0]);
-    uint8_t content[MSC_DISK_BLOCK_NUM * MSC_DISK_BLOCK_SIZE];
+    uint8_t content[MSC_DATA_SECTOR_COUNT * MSC_DISK_BLOCK_SIZE];
     size_t size = format_ini(settings, content, sizeof(content));
     unsigned clusters = (unsigned)((size + MSC_DISK_BLOCK_SIZE - 1) /
                                    MSC_DISK_BLOCK_SIZE);
@@ -175,6 +181,7 @@ static uint16_t fat12_next(const msc_volume_t *volume, uint16_t cluster) {
 }
 
 size_t msc_volume_read_ini(const msc_volume_t *volume, uint8_t *out, size_t cap) {
+    if (cap == 0) return 0;
     const uint8_t *entry = &volume->disk[2][32];
     static const char want[] = "JOYSTICKINI";
     bool match = memcmp(entry, want, 11) == 0 && entry[11] == 0x20;

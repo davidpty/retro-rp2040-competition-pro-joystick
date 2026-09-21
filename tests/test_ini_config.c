@@ -61,6 +61,12 @@ static void test_format_bindings(void) {
     binding = (ini_binding_t){INI_BIND_AXIS, 1, 0, 0, 0};
     assert(ini_config_binding_format(&binding, text, sizeof(text)));
     assert(strcmp(text, "DOWN") == 0);
+    assert(!ini_config_binding_format(&binding, text, 0));
+    assert(!ini_config_binding_format(&binding, text, 1));
+
+    binding = (ini_binding_t){INI_BIND_KEYBOARD, INI_CODE_A, 0x07, 1, 60000};
+    assert(ini_config_binding_format_with_rate(&binding, 100, text, sizeof(text)));
+    assert(strcmp(text, "CTRL+SHIFT+ALT+A:AUTOFIRE:60000MS:100HZ") == 0);
 }
 
 static void test_invalid_configs(void) {

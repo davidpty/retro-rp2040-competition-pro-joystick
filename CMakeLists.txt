@@ -25,12 +25,17 @@ embed_default_ini(${CMAKE_CURRENT_LIST_DIR} ${GENERATED_INCLUDE_DIR})
 
 add_executable(rp2040_zero_hid_joystick
     src/main.c
+    src/config_service.c
     src/ini_config.c
     src/joystick.c
+    src/joystick_input.c
+    src/joystick_gestures.c
+    src/joystick_reports.c
     src/led_color.c
     src/msc_disk.c
     src/msc_volume.c
     src/settings.c
+    src/settings_store.c
     src/status_led.c
     src/usb_descriptors.c
 )

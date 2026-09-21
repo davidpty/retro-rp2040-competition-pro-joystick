@@ -275,21 +275,39 @@ bool ini_config_binding_format_with_rate(const ini_binding_t *binding, uint8_t r
     char prefix[32] = "";
     size_t used = 0;
     if (binding->type == INI_BIND_KEYBOARD) {
-        if (binding->modifier & 0x01) used += (size_t)snprintf(prefix + used, sizeof(prefix) - used, "CTRL+");
-        if (binding->modifier & 0x02) used += (size_t)snprintf(prefix + used, sizeof(prefix) - used, "SHIFT+");
-        if (binding->modifier & 0x04) used += (size_t)snprintf(prefix + used, sizeof(prefix) - used, "ALT+");
+        if (binding->modifier & 0x01) {
+            int n = snprintf(prefix + used, sizeof(prefix) - used, "CTRL+");
+            if (n < 0 || (size_t)n >= sizeof(prefix) - used) return false;
+            used += (size_t)n;
+        }
+        if (binding->modifier & 0x02) {
+            int n = snprintf(prefix + used, sizeof(prefix) - used, "SHIFT+");
+            if (n < 0 || (size_t)n >= sizeof(prefix) - used) return false;
+            used += (size_t)n;
+        }
+        if (binding->modifier & 0x04) {
+            int n = snprintf(prefix + used, sizeof(prefix) - used, "ALT+");
+            if (n < 0 || (size_t)n >= sizeof(prefix) - used) return false;
+            used += (size_t)n;
+        }
         if (binding->value == INI_CODE_NONE && used) prefix[used - 1] = '\0';
     }
     char suffix[32] = "";
     if (binding->autofire) {
         int used = snprintf(suffix, sizeof(suffix), ":AUTOFIRE");
-        if (binding->autofire_delay_ms)
-            used += snprintf(suffix + used, sizeof(suffix) - (size_t)used, ":%uMS",
-                             (unsigned)binding->autofire_delay_ms);
-        if (rate_hz)
-            used += snprintf(suffix + used, sizeof(suffix) - (size_t)used, ":%uHZ",
-                             (unsigned)rate_hz);
         if (used < 0 || (size_t)used >= sizeof(suffix)) return false;
+        if (binding->autofire_delay_ms) {
+            int n = snprintf(suffix + used, sizeof(suffix) - (size_t)used, ":%uMS",
+                             (unsigned)binding->autofire_delay_ms);
+            if (n < 0 || (size_t)n >= sizeof(suffix) - (size_t)used) return false;
+            used += n;
+        }
+        if (rate_hz) {
+            int n = snprintf(suffix + used, sizeof(suffix) - (size_t)used, ":%uHZ",
+                             (unsigned)rate_hz);
+            if (n < 0 || (size_t)n >= sizeof(suffix) - (size_t)used) return false;
+            used += n;
+        }
     } else if (rate_hz) {
         return false;
     }

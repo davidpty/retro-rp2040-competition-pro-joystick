@@ -34,8 +34,24 @@ static void test_volume_round_trip(void) {
     assert(bindings[0][4].modifier == 0x02 && bindings[0][4].value == INI_CODE_A);
 }
 
+static void test_volume_boundary_reads(void) {
+    msc_volume_t volume;
+    joystick_settings_t settings;
+    uint8_t data[MSC_DISK_BLOCK_SIZE];
+    joystick_settings_defaults(&settings);
+    msc_volume_rebuild(&volume, &settings);
+    assert(msc_volume_read_ini(&volume, data, 0) == 0);
+
+    /* A corrupt start cluster must be rejected without reading outside the
+     * fixed disk image. */
+    volume.disk[2][32 + 26] = 0xff;
+    volume.disk[2][32 + 27] = 0xff;
+    assert(msc_volume_read_ini(&volume, data, sizeof(data)) == 0);
+}
+
 int test_msc_volume_main(void) {
     test_volume_round_trip();
+    test_volume_boundary_reads();
     puts("msc volume tests passed");
     return 0;
 }

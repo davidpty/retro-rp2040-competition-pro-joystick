@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 #include "ini_config.h"
-#include "joystick.h"
+#include "joystick_types.h"
 
 #define JOY_SETTINGS_MAGIC   0x4a535447u
 #define JOY_SETTINGS_VERSION 11u

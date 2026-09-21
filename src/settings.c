@@ -36,7 +36,7 @@ void joystick_settings_defaults(joystick_settings_t *settings) {
     settings->speed = JOY_SPEED_FAST;
     settings->rate_hz = JOY_AUTOFIRE_DEFAULT_HZ;
     settings->led_enabled = true;
-    settings->active_profile = 0;
+    settings->active_profile = JOY_PROFILE_RED;
     settings->settings_token = 0;
     memset(settings->autofire_hz, 0, sizeof(settings->autofire_hz));
     if (!load_default_profiles(settings->profiles, settings->autofire_hz))
@@ -48,7 +48,7 @@ void joystick_settings_select_profile(joystick_settings_t *settings, uint8_t pro
 }
 
 void joystick_settings_sync_active_profile(joystick_settings_t *settings) {
-    if (settings->active_profile >= JOY_PROFILE_COUNT) settings->active_profile = 0;
+    if (settings->active_profile >= JOY_PROFILE_COUNT) settings->active_profile = JOY_PROFILE_RED;
 }
 
 const joystick_profile_t *joystick_settings_active_profile(const joystick_settings_t *settings) {

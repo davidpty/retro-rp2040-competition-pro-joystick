@@ -15,6 +15,9 @@ add_executable(joystick_host_tests
     test_led_color.c
     ../src/ini_config.c
     ../src/joystick.c
+    ../src/joystick_input.c
+    ../src/joystick_gestures.c
+    ../src/joystick_reports.c
     ../src/led_color.c
     ../src/msc_volume.c
     ../src/settings.c
