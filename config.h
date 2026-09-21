@@ -15,11 +15,10 @@
 #define JOY_GPIO_STATUS_LED    16  /* Onboard WS2812 LED */
 
 /* Button outputs are configured at runtime through the JOYSTICK.INI file on
- * the config-mode USB drive (see ini_config.h). Factory defaults restore the
- * original shipping behavior: Big Fire 1 -> Button 1, Big Fire 2 -> Button 2,
- * Small Fire 1 -> autofire Button 1, Small Fire 2 -> Button 3 (set in
- * settings.c). Button gestures below always use the physical fire buttons and
- * can never be remapped. */
+ * the config-mode USB drive (see ini_config.h). Factory mappings are defined
+ * in default_joystick.ini and embedded into the firmware at build time.
+ * Button gestures below always use the physical fire buttons and can never be
+ * remapped. */
 #define JOY_AUTOFIRE_DEFAULT_HZ   20  /* Used only when flash settings are invalid */
 #define JOY_AUTOFIRE_MIN_HZ        1
 #define JOY_AUTOFIRE_MAX_HZ       60

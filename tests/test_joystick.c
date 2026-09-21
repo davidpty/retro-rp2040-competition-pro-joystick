@@ -15,6 +15,11 @@ static void test_defaults_and_axis_reports(void) {
     joystick_settings_t settings;
     joystick_settings_defaults(&settings);
     joystick_profile_t *profile = &settings.profiles[0];
+    assert(profile->button[2].type == INI_BIND_GAMEPAD &&
+           profile->button[2].value == 1 && profile->button[2].autofire);
+    assert(settings.profiles[1].button[2].type == INI_BIND_GAMEPAD &&
+           settings.profiles[1].button[2].value == 3 &&
+           settings.profiles[1].button[2].autofire);
     autofire_state_t state = {0};
     joystick_report_t report = joystick_make_report(&state, PRESSED(INPUT_UP), profile, false);
     assert(report.x == 0 && report.y == -127 && report.buttons == 0);
@@ -89,6 +94,9 @@ static void test_factory_reset_scope(void) {
     assert(settings.active_profile == 0);
     assert(settings.profiles[0].button[0].type == INI_BIND_GAMEPAD &&
            settings.profiles[0].button[0].value == 1);
+    assert(settings.profiles[0].button[2].type == INI_BIND_GAMEPAD &&
+           settings.profiles[0].button[2].value == 1 &&
+           settings.profiles[0].button[2].autofire);
     assert(settings.profiles[1].button[0].value == INI_CODE_A);
     assert(settings.profiles[2].button[0].value == INI_CODE_A + 1);
     assert(settings.profiles[3].button[0].value == INI_CODE_A + 2);

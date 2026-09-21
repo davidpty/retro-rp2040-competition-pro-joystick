@@ -2,6 +2,11 @@ cmake_minimum_required(VERSION 3.13)
 project(joystick_host_tests C)
 enable_testing()
 
+include(${CMAKE_CURRENT_LIST_DIR}/../cmake/EmbedDefaultIni.cmake)
+set(GENERATED_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
+file(MAKE_DIRECTORY ${GENERATED_INCLUDE_DIR})
+embed_default_ini(${CMAKE_CURRENT_LIST_DIR}/.. ${GENERATED_INCLUDE_DIR})
+
 add_executable(joystick_host_tests
     test_main.c
     test_joystick.c
@@ -14,7 +19,7 @@ add_executable(joystick_host_tests
     ../src/msc_volume.c
     ../src/settings.c
 )
-target_include_directories(joystick_host_tests PRIVATE .. ../src)
+target_include_directories(joystick_host_tests PRIVATE .. ../src ${GENERATED_INCLUDE_DIR})
 target_compile_features(joystick_host_tests PRIVATE c_std_11)
 target_compile_options(joystick_host_tests PRIVATE -Wall -Wextra -Werror)
 add_test(NAME joystick_logic COMMAND joystick_host_tests)

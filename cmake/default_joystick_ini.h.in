@@ -1,0 +1,12 @@
+#ifndef JOYSTICK_DEFAULT_INI_H_
+#define JOYSTICK_DEFAULT_INI_H_
+
+#include <stddef.h>
+#include <stdint.h>
+
+static const uint8_t joystick_default_ini[] =
+@DEFAULT_INI_C_STRING@;
+
+#define JOYSTICK_DEFAULT_INI_SIZE (sizeof(joystick_default_ini) - 1u)
+
+#endif

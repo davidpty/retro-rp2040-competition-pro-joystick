@@ -27,6 +27,7 @@ static void test_volume_round_trip(void) {
     assert(red != NULL);
     assert(strstr(red, "button1=") < strstr(red, "up="));
     assert(strstr(red, "button4=") < strstr(red, "up="));
+    assert(strstr(red, "button3=JOY1:AUTOFIRE\r\n") != NULL);
     ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT];
     assert(ini_config_parse(data, length, bindings));
     assert(bindings[0][0].type == INI_BIND_KEYBOARD && bindings[0][0].value == INI_CODE_A + 22);

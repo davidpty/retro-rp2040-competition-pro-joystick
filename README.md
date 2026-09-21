@@ -152,7 +152,7 @@ combinations, and any mapped input can use autofire.
    [RED]
    button1=JOY1            ; Button 1 (default for Big Fire 1)
    button2=JOY2            ; Button 2 (default for Big Fire 2)
-   button3=SHIFT+A         ; Keyboard combination
+   button3=JOY1:AUTOFIRE   ; Autofire for Button 1
    button4=JOY3            ; Button 3 (default for Small Fire 2)
    up=UP
    down=DOWN
@@ -240,10 +240,11 @@ Notes:
 Edit [`config.h`](config.h) before building to change:
 
 - GPIO assignments
+- Factory mappings in [`default_joystick.ini`](default_joystick.ini)
 - Autofire rate limits and default rate
 - Config/firmware gesture buttons and hold times
 - Fast/slow report intervals and debounce time
-- LED colors and USB identity
+- Profile, status LED colors, and USB identity
 
 The default slow mode reports ordinary joystick input approximately every 80 ms. Autofire temporarily uses the fast report interval so its selected rate can be transmitted accurately.
 

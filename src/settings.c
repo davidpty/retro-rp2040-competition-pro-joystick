@@ -1,4 +1,5 @@
 #include "settings.h"
+#include "default_joystick_ini.h"
 
 #include <stddef.h>
 #include <string.h>
@@ -17,17 +18,16 @@ static uint32_t crc32(const void *data, size_t length) {
     return ~crc;
 }
 
-static void default_profile(joystick_profile_t *profile) {
-    memset(profile, 0, sizeof(*profile));
-    for (unsigned d = 0; d < JOY_DIRECTION_COUNT; ++d) {
-        profile->direction[d].type = INI_BIND_AXIS;
-        profile->direction[d].value = d;
+static bool load_default_profiles(joystick_profile_t profiles[JOY_PROFILE_COUNT]) {
+    ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT];
+    if (!ini_config_parse(joystick_default_ini, JOYSTICK_DEFAULT_INI_SIZE, bindings)) return false;
+    for (unsigned p = 0; p < JOY_PROFILE_COUNT; ++p) {
+        for (unsigned d = 0; d < JOY_DIRECTION_COUNT; ++d)
+            profiles[p].direction[d] = bindings[p][d];
+        for (unsigned b = 0; b < JOY_BUTTON_COUNT; ++b)
+            profiles[p].button[b] = bindings[p][JOY_DIRECTION_COUNT + b];
     }
-    for (unsigned b = 0; b < JOY_BUTTON_COUNT; ++b) {
-        profile->button[b].type = INI_BIND_GAMEPAD;
-        profile->button[b].value = (uint8_t)(b + 1);
-    }
-    profile->button[2].autofire = 1;
+    return true;
 }
 
 void joystick_settings_defaults(joystick_settings_t *settings) {
@@ -35,7 +35,8 @@ void joystick_settings_defaults(joystick_settings_t *settings) {
     settings->rate_hz = JOY_AUTOFIRE_DEFAULT_HZ;
     settings->led_enabled = true;
     settings->active_profile = 0;
-    for (unsigned p = 0; p < JOY_PROFILE_COUNT; ++p) default_profile(&settings->profiles[p]);
+    if (!load_default_profiles(settings->profiles))
+        memset(settings->profiles, 0, sizeof(settings->profiles));
 }
 
 void joystick_settings_select_profile(joystick_settings_t *settings, uint8_t profile) {
@@ -52,7 +53,10 @@ const joystick_profile_t *joystick_settings_active_profile(const joystick_settin
 }
 
 void joystick_settings_reset_profile(joystick_settings_t *settings, uint8_t profile) {
-    if (profile < JOY_PROFILE_COUNT) default_profile(&settings->profiles[profile]);
+    if (profile < JOY_PROFILE_COUNT) {
+        joystick_profile_t defaults[JOY_PROFILE_COUNT];
+        if (load_default_profiles(defaults)) settings->profiles[profile] = defaults[profile];
+    }
 }
 
 joystick_settings_record_t joystick_settings_record_make(

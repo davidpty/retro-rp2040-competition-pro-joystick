@@ -16,6 +16,11 @@ include("${PICO_SDK_PATH}/external/pico_sdk_import.cmake")
 project(rp2040_zero_hid_joystick C CXX ASM)
 pico_sdk_init()
 
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/EmbedDefaultIni.cmake)
+set(GENERATED_INCLUDE_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated)
+file(MAKE_DIRECTORY ${GENERATED_INCLUDE_DIR})
+embed_default_ini(${CMAKE_CURRENT_LIST_DIR} ${GENERATED_INCLUDE_DIR})
+
 add_executable(rp2040_zero_hid_joystick
     src/main.c
     src/ini_config.c
@@ -30,7 +35,7 @@ add_executable(rp2040_zero_hid_joystick
 
 pico_generate_pio_header(rp2040_zero_hid_joystick ${CMAKE_CURRENT_LIST_DIR}/src/ws2812.pio)
 
-target_include_directories(rp2040_zero_hid_joystick PRIVATE . src)
+target_include_directories(rp2040_zero_hid_joystick PRIVATE . src ${GENERATED_INCLUDE_DIR})
 target_compile_definitions(rp2040_zero_hid_joystick PRIVATE
     CFG_TUSB_CONFIG_FILE="tusb_config.h"
     PICO_FLASH_ASSERT_ON_UNSAFE=0
