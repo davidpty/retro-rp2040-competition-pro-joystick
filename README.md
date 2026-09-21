@@ -4,6 +4,8 @@ Turn a classic C64, Amiga, Atari, Competition Pro, or other DE-9 joystick into a
 
 The original switches and enclosure can be kept while the firmware adds faster input response and flexible controls for computers, games, and emulators. It can send button presses to a USB gamepad, type keyboard keys, or do both depending on the selected mapping.
 
+![Joystick](joystick.png)
+
 ### Key features
 
 - Four persistent button-mapping profiles shown via LED Red, Green, Blue, and Yellow.
