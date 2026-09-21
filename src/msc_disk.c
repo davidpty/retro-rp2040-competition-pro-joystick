@@ -70,8 +70,8 @@ const msc_volume_t *msc_disk_volume(void) {
 void tud_msc_inquiry_cb(uint8_t lun, uint8_t vendor_id[8],
                         uint8_t product_id[16], uint8_t product_rev[4]) {
     (void)lun;
-    static const char vid[] = "Retro2040";
-    static const char pid[] = "INI Config";
+    static const char vid[] = "Joystick";
+    static const char pid[] = "Config";
     static const char rev[] = "1.0";
     memcpy(vendor_id, vid, strlen(vid));
     memcpy(product_id, pid, strlen(pid));
