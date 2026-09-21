@@ -190,7 +190,7 @@ delays range from 1 to 60000 ms and frequencies from 1 to 100 Hz.
    right=RIGHT
 
    [YELLOW]
-   button1=JOY1
+   button1=JOY1:AUTOFIRE:500MS:25HZ ; Delayed fixed autofire example
    button2=JOY2
    button3=JOY3
    button4=JOY4

@@ -68,6 +68,11 @@ static void test_defaults_and_axis_reports(void) {
            settings.profiles[2].button[3].autofire &&
            settings.profiles[2].button[3].autofire_delay_ms == 0 &&
            settings.autofire_hz[2][JOY_DIRECTION_COUNT + 3] == 0);
+    assert(settings.profiles[3].button[0].type == INI_BIND_GAMEPAD &&
+           settings.profiles[3].button[0].value == 1 &&
+           settings.profiles[3].button[0].autofire &&
+           settings.profiles[3].button[0].autofire_delay_ms == 500 &&
+           settings.autofire_hz[3][JOY_DIRECTION_COUNT] == 25);
     autofire_state_t state = {0};
     joystick_report_t report = joystick_make_report(&state, PRESSED(INPUT_UP), profile, false);
     assert(report.x == 0 && report.y == -127 && report.buttons == 0);
