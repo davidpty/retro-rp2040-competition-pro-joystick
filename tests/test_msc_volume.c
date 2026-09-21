@@ -21,6 +21,12 @@ static void test_volume_round_trip(void) {
     uint8_t data[MSC_DISK_BLOCK_SIZE * 2];
     size_t length = msc_volume_read_ini(&volume, data, sizeof(data));
     assert(length == volume.ini_size);
+    assert(length < sizeof(data));
+    data[length] = '\0';
+    char *red = strstr((char *)data, "[RED]\r\n");
+    assert(red != NULL);
+    assert(strstr(red, "button1=") < strstr(red, "up="));
+    assert(strstr(red, "button4=") < strstr(red, "up="));
     ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT];
     assert(ini_config_parse(data, length, bindings));
     assert(bindings[0][0].type == INI_BIND_KEYBOARD && bindings[0][0].value == INI_CODE_A + 22);

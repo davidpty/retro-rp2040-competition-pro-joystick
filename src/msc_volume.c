@@ -100,8 +100,8 @@ static size_t format_ini(const joystick_settings_t *settings,
         "; Add :AUTOFIRE to any output, for example JOY1:AUTOFIRE or UP:AUTOFIRE.\r\n"
         "; Reverse axes by swapping values, for example up=DOWN and down=UP.\r\n"
         "\r\n";
-    static const char key[][12] = { "up=", "down=", "left=", "right=",
-                                    "button1=", "button2=", "button3=", "button4=" };
+    static const char key[][12] = { "button1=", "button2=", "button3=", "button4=",
+                                    "up=", "down=", "left=", "right=" };
     static const char section[][12] = { "[RED]\r\n", "[GREEN]\r\n",
                                         "[PURPLE]\r\n", "[YELLOW]\r\n" };
     size_t used = 0;
@@ -115,9 +115,9 @@ static size_t format_ini(const joystick_settings_t *settings,
         memcpy(out + used, section[p], section_len);
         used += section_len;
         for (unsigned i = 0; i < JOY_PROFILE_INPUT_COUNT; ++i) {
-            const ini_binding_t *binding = i < JOY_DIRECTION_COUNT
-                ? &settings->profiles[p].direction[i]
-                : &settings->profiles[p].button[i - JOY_DIRECTION_COUNT];
+            const ini_binding_t *binding = i < JOY_BUTTON_COUNT
+                ? &settings->profiles[p].button[i]
+                : &settings->profiles[p].direction[i - JOY_BUTTON_COUNT];
             char value[64];
             size_t key_len = strlen(key[i]);
             if (!ini_config_binding_format(binding, value, sizeof(value))) return 0;

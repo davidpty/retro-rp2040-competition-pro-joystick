@@ -150,44 +150,44 @@ combinations, and any mapped input can use autofire.
 
    ```ini
    [RED]
-   up=UP
-   down=DOWN
-   left=LEFT
-   right=RIGHT
    button1=JOY1            ; Button 1 (default for Big Fire 1)
    button2=JOY2            ; Button 2 (default for Big Fire 2)
    button3=SHIFT+A         ; Keyboard combination
    button4=JOY3            ; Button 3 (default for Small Fire 2)
-
-   [GREEN]
-   up=W
-   down=S
-   left=A
-   right=D
-   button1=JOY1
-   button2=JOY2
-   button3=CTRL+ALT+B:AUTOFIRE
-   button4=JOY3
-
-   [PURPLE]
-   up=UP:AUTOFIRE
-   down=DOWN
-   left=LEFT
-   right=RIGHT
-   button1=JOY1
-   button2=JOY2
-   button3=JOY1:AUTOFIRE
-   button4=JOY3
-
-   [YELLOW]
    up=UP
    down=DOWN
    left=LEFT
    right=RIGHT
+
+   [GREEN]
+   button1=JOY1
+   button2=JOY2
+   button3=CTRL+ALT+B:AUTOFIRE
+   button4=JOY3
+   up=W
+   down=S
+   left=A
+   right=D
+
+   [PURPLE]
    button1=JOY1
    button2=JOY2
    button3=JOY1:AUTOFIRE
    button4=JOY3
+   up=UP:AUTOFIRE
+   down=DOWN
+   left=LEFT
+   right=RIGHT
+
+   [YELLOW]
+   button1=JOY1
+   button2=JOY2
+   button3=JOY1:AUTOFIRE
+   button4=JOY3
+   up=UP
+   down=DOWN
+   left=LEFT
+   right=RIGHT
    ```
 
    Valid outputs:
