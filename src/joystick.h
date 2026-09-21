@@ -5,6 +5,7 @@
 #include <stdint.h>
 
 #include "config.h"
+#include "ini_config.h"
 
 typedef enum {
     INPUT_UP, INPUT_DOWN, INPUT_LEFT, INPUT_RIGHT,
@@ -30,6 +31,11 @@ typedef struct {
     uint8_t reserved;
     uint8_t keycodes[6];
 } joystick_keyboard_report_t;
+
+typedef struct {
+    ini_binding_t direction[JOY_DIRECTION_COUNT];
+    ini_binding_t button[JOY_BUTTON_COUNT];
+} joystick_profile_t;
 
 typedef struct {
     bool active;
@@ -93,10 +99,7 @@ typedef struct {
     joystick_speed_t speed;
     uint8_t rate_hz;
     bool led_enabled;
-    uint8_t button_code[4];
-    uint8_t autofire_mask;
-    uint8_t profiles[4][4];
-    uint8_t profile_autofire_mask[4];
+    joystick_profile_t profiles[JOY_PROFILE_COUNT];
     uint8_t active_profile;
 } joystick_settings_t;
 
@@ -105,14 +108,14 @@ void input_filter_init(input_filter_t *filter, uint8_t raw);
 uint8_t input_filter_update(input_filter_t *filter, uint8_t raw, uint32_t now_us);
 void autofire_state_init(autofire_state_t *state);
 void autofire_state_update(autofire_state_t *state, bool enabled, uint32_t now_us);
-bool joystick_autofire_enabled(uint8_t inputs, const joystick_settings_t *settings);
+bool joystick_autofire_enabled(uint8_t inputs, const joystick_profile_t *profile);
 uint32_t joystick_report_interval_us(joystick_speed_t speed, bool autofire_active);
 joystick_report_t joystick_make_report(autofire_state_t *state, uint8_t inputs,
-                                       const joystick_settings_t *settings,
+                                       const joystick_profile_t *profile,
                                        bool suppress_fire);
 joystick_keyboard_report_t joystick_make_keyboard_report(autofire_state_t *state,
                                        uint8_t inputs,
-                                       const joystick_settings_t *settings,
+                                       const joystick_profile_t *profile,
                                        bool suppress_fire);
 bool joystick_direct_activity(uint8_t inputs, bool ignore_fire_buttons);
 bool joystick_status_led_active(bool direct_active, bool autofire_held,

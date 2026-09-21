@@ -8,6 +8,22 @@
 #include "config.h"
 
 #define JOY_BUTTON_COUNT 4
+#define JOY_DIRECTION_COUNT 4
+#define JOY_PROFILE_INPUT_COUNT (JOY_BUTTON_COUNT + JOY_DIRECTION_COUNT)
+
+typedef enum {
+    INI_BIND_NONE = 0,
+    INI_BIND_GAMEPAD,
+    INI_BIND_KEYBOARD,
+    INI_BIND_AXIS
+} ini_binding_type_t;
+
+typedef struct {
+    uint8_t type;
+    uint8_t value;
+    uint8_t modifier;
+    uint8_t autofire;
+} ini_binding_t;
 
 /* Persistent, compact button-output codes. Codes are validated by
  * ini_config_parse() and clamped to 0..INI_CODE_MAX when settings load. */
@@ -24,11 +40,11 @@ typedef enum {
     INI_CODE_MAX = INI_CODE_COUNT - 1
 } ini_button_code_t;
 
-/* Parse JOYSTICK.INI content. All four color sections must contain four valid
- * button assignments. */
+/* Parse JOYSTICK.INI content. All four profile sections must contain four
+ * direction and four button assignments. */
 bool ini_config_parse(const uint8_t *data, size_t length,
-                      uint8_t codes[JOY_PROFILE_COUNT][JOY_BUTTON_COUNT],
-                      uint8_t autofire_mask[JOY_PROFILE_COUNT]);
+                      ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT]);
+bool ini_config_binding_format(const ini_binding_t *binding, char *out, size_t capacity);
 
 /* Reverse lookup: canonical uppercase name for a code, e.g. "JOY1", "SPACE",
  * "F5"; returns "NONE" for invalid codes. */

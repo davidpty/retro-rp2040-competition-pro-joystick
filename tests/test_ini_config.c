@@ -2,76 +2,58 @@
 #undef NDEBUG
 #endif
 #include <assert.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "ini_config.h"
 
-static bool parse_ok(const char *text,
-                     uint8_t codes[JOY_PROFILE_COUNT][JOY_BUTTON_COUNT],
-                     uint8_t masks[JOY_PROFILE_COUNT]) {
-    return ini_config_parse((const uint8_t *)text, strlen(text), codes, masks);
+static const char config_text[] =
+    "[RED]\nup=UP\ndown=DOWN\nleft=LEFT\nright=RIGHT\n"
+    "button1=SHIFT+A\nbutton2=JOY1\nbutton3=CTRL+ALT+B:AUTOFIRE\nbutton4=NONE\n"
+    "[GREEN]\nup=W\ndown=S\nleft=A\nright=D\n"
+    "button1=JOY2\nbutton2=SPACE\nbutton3=SHIFT\nbutton4=NONE\n"
+    "[PURPLE]\nup=JOY1\ndown=JOY2\nleft=UP:AUTOFIRE\nright=RIGHT\n"
+    "button1=CTRL+F1\nbutton2=NONE\nbutton3=JOY3\nbutton4=Z\n"
+    "[YELLOW]\nup=NONE\ndown=NONE\nleft=NONE\nright=NONE\n"
+    "button1=A\nbutton2=B\nbutton3=C\nbutton4=D\n";
+
+static void test_parse_bindings(void) {
+    ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT];
+    assert(ini_config_parse((const uint8_t *)config_text, strlen(config_text), bindings));
+    assert(bindings[0][0].type == INI_BIND_AXIS && bindings[0][0].value == 0);
+    assert(bindings[0][4].type == INI_BIND_KEYBOARD &&
+           bindings[0][4].modifier == 0x02 && bindings[0][4].value == INI_CODE_A);
+    assert(bindings[0][6].modifier == (0x01 | 0x04) &&
+           bindings[0][6].value == INI_CODE_A + 1 && bindings[0][6].autofire);
+    assert(bindings[1][0].type == INI_BIND_KEYBOARD &&
+           ini_config_keycode(bindings[1][0].value) == 0x1a); /* W */
+    assert(bindings[2][2].type == INI_BIND_AXIS && bindings[2][2].autofire);
 }
 
-static void test_round_trip_names(void) {
-    assert(strcmp(ini_config_code_name(INI_CODE_NONE), "NONE") == 0);
-    assert(strcmp(ini_config_code_name(INI_CODE_JOY4), "JOY4") == 0);
-    assert(strcmp(ini_config_code_name(INI_CODE_A + 25), "Z") == 0);
-    assert(strcmp(ini_config_code_name(INI_CODE_F1 + 11), "F12") == 0);
-}
-
-static void test_valid_config(void) {
-    const char *text =
-        "; profiles\r\n"
-        "[RED]\r\nbutton1=A\r\nbutton2=JOY2\r\nbutton3=F5\r\nbutton4=NONE\r\n"
-        "[GREEN]\r\nbutton1=SPACE:AUTOFIRE\r\nbutton2=JOY2\r\nbutton3=JOY3\r\nbutton4=JOY4\r\n"
-        "[PURPLE]\r\nbutton1=JOY1\r\nbutton2=SHIFT:AUTOFIRE\r\nbutton3=BACKSPACE\r\nbutton4=0\r\n"
-        "[YELLOW]\r\nbutton1=a:autofire\r\nbutton2=joy1\r\nbutton3=f12\r\nbutton4=space\r\n";
-    uint8_t codes[JOY_PROFILE_COUNT][JOY_BUTTON_COUNT];
-    uint8_t masks[JOY_PROFILE_COUNT];
-    assert(parse_ok(text, codes, masks));
-    assert(codes[0][0] == INI_CODE_A && codes[0][2] == INI_CODE_F1 + 4);
-    assert(codes[1][0] == INI_CODE_SPACE && masks[1] == 1);
-    assert(codes[2][1] == INI_CODE_SHIFT && masks[2] == 2);
-    assert(codes[3][0] == INI_CODE_A && masks[3] == 1);
+static void test_format_bindings(void) {
+    char text[64];
+    ini_binding_t binding = {INI_BIND_KEYBOARD, INI_CODE_A, 0x02, 1};
+    assert(ini_config_binding_format(&binding, text, sizeof(text)));
+    assert(strcmp(text, "SHIFT+A:AUTOFIRE") == 0);
+    binding = (ini_binding_t){INI_BIND_AXIS, 1, 0, 0};
+    assert(ini_config_binding_format(&binding, text, sizeof(text)));
+    assert(strcmp(text, "DOWN") == 0);
 }
 
 static void test_invalid_configs(void) {
-    uint8_t codes[JOY_PROFILE_COUNT][JOY_BUTTON_COUNT];
-    uint8_t masks[JOY_PROFILE_COUNT];
-    const char *base =
-        "[RED]\nbutton1=A\nbutton2=B\nbutton3=C\nbutton4=D\n"
-        "[GREEN]\nbutton1=A\nbutton2=B\nbutton3=C\nbutton4=D\n"
-        "[PURPLE]\nbutton1=A\nbutton2=B\nbutton3=C\nbutton4=D\n"
-        "[YELLOW]\nbutton1=A\nbutton2=B\nbutton3=C\nbutton4=D\n";
-    assert(parse_ok(base, codes, masks));
-    const char *missing =
-        "[RED]\nbutton1=A\nbutton2=B\nbutton3=C\n"
-        "[GREEN]\nbutton1=A\nbutton2=B\nbutton3=C\nbutton4=D\n"
-        "[PURPLE]\nbutton1=A\nbutton2=B\nbutton3=C\nbutton4=D\n"
-        "[YELLOW]\nbutton1=A\nbutton2=B\nbutton3=C\nbutton4=D\n";
-    assert(!parse_ok(missing, codes, masks));
-    assert(!parse_ok("[RED]\nbutton1=A\n", codes, masks));
-    assert(!parse_ok("[BLUE]\nbutton1=A\n", codes, masks));
-    assert(!parse_ok("[RED]\nbutton1=A:BAD\nbutton2=B\nbutton3=C\nbutton4=D\n",
-                     codes, masks));
-    assert(!parse_ok("[CONFIG]\nbutton1=A\nbutton2=B\nbutton3=C\nbutton4=D\n",
-                     codes, masks));
-}
-
-static void test_keycode_mapping(void) {
-    assert(ini_config_joy_button(INI_CODE_JOY1) == 1);
-    assert(ini_config_keycode(INI_CODE_A) == 0x04);
-    assert(ini_config_keycode(INI_CODE_F1 + 11) == 0x45);
-    assert(ini_config_modifier(INI_CODE_SHIFT) == 0x02);
+    ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT];
+    const char *invalid = "[RED]\nup=UP\ndown=DOWN\nleft=LEFT\nright=RIGHT\n"
+                          "button1=SHIFT+A+B\nbutton2=JOY1\nbutton3=JOY2\nbutton4=JOY3\n";
+    assert(!ini_config_parse((const uint8_t *)invalid, strlen(invalid), bindings));
+    invalid = "[RED]\nup=UP:AUTOFIRE\ndown=DOWN\nleft=LEFT\nright=RIGHT\n"
+              "button1=A\nbutton2=B\nbutton3=C\nbutton4=D\n";
+    assert(!ini_config_parse((const uint8_t *)invalid, strlen(invalid), bindings));
 }
 
 int test_ini_config_main(void) {
-    test_round_trip_names();
-    test_valid_config();
+    test_parse_bindings();
+    test_format_bindings();
     test_invalid_configs();
-    test_keycode_mapping();
     puts("ini config tests passed");
     return 0;
 }

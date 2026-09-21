@@ -89,18 +89,16 @@ static config_apply_result_t config_apply(const joystick_settings_t *current) {
     const msc_volume_t *volume = msc_disk_volume();
     uint8_t data[2 * MSC_DISK_BLOCK_SIZE];
     size_t length = msc_volume_read_ini(volume, data, sizeof(data));
-    uint8_t codes[JOY_PROFILE_COUNT][JOY_BUTTON_COUNT];
-    uint8_t autofire_mask[JOY_PROFILE_COUNT];
+    ini_binding_t bindings[JOY_PROFILE_COUNT][JOY_PROFILE_INPUT_COUNT];
     config_apply_result_t result = CONFIG_APPLY_REJECTED;
-    if (ini_config_parse(data, length, codes, autofire_mask)) {
+    if (ini_config_parse(data, length, bindings)) {
         joystick_settings_t parsed = *current;
         for (unsigned p = 0; p < JOY_PROFILE_COUNT; ++p) {
-            memcpy(parsed.profiles[p], codes[p], JOY_BUTTON_COUNT);
-            parsed.profile_autofire_mask[p] = autofire_mask[p];
+            memcpy(parsed.profiles[p].direction, bindings[p],
+                   sizeof(parsed.profiles[p].direction));
+            memcpy(parsed.profiles[p].button, bindings[p] + JOY_DIRECTION_COUNT,
+                   sizeof(parsed.profiles[p].button));
         }
-        memcpy(parsed.button_code, parsed.profiles[parsed.active_profile],
-               JOY_BUTTON_COUNT);
-        parsed.autofire_mask = parsed.profile_autofire_mask[parsed.active_profile];
         if (joystick_settings_equal(&parsed, current)) {
             result = CONFIG_APPLY_UNCHANGED;
         } else {
@@ -299,8 +297,10 @@ int main(void) {
             }
         }
 
+        const joystick_profile_t *active_profile =
+            joystick_settings_active_profile(&settings);
         bool autofire_held = !post_reboot_input_guard &&
-                             joystick_autofire_enabled(inputs, &settings);
+                             joystick_autofire_enabled(inputs, active_profile);
         uint32_t interval_us = joystick_report_interval_us(settings.speed, autofire_held);
         autofire_state_update(&autofire, autofire_held, now_us);
         bool suppress_fire_output = gesture_state.suppress_output ||
@@ -308,13 +308,13 @@ int main(void) {
         if (!config_drive_enabled && !post_reboot_input_guard) {
             if (joystick_report_due(&next_report_us, now_us, interval_us)) {
                 joystick_report_t report = joystick_make_report(
-                    &autofire, inputs, &settings, suppress_fire_output);
+                    &autofire, inputs, active_profile, suppress_fire_output);
                 if (tud_hid_n_ready(0)) {
                     tud_hid_n_report(0, REPORT_ID_JOYSTICK, &report, sizeof(report));
                 }
             }
             joystick_keyboard_report_t keyboard = joystick_make_keyboard_report(
-                &autofire, inputs, &settings, suppress_fire_output);
+                &autofire, inputs, active_profile, suppress_fire_output);
             if (memcmp(&keyboard, &last_keyboard, sizeof(keyboard)) != 0) {
                 last_keyboard = keyboard;
                 if (tud_hid_n_ready(1)) {

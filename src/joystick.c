@@ -134,12 +134,18 @@ void autofire_state_update(autofire_state_t *state, bool enabled, uint32_t now_u
     }
 }
 
-bool joystick_autofire_enabled(uint8_t inputs, const joystick_settings_t *settings) {
-    for (unsigned i = 0; i < 4; ++i) {
-        if ((settings->autofire_mask & (1u << i)) &&
-            joystick_input_pressed(inputs, joystick_fire_input(i))) {
+static const ini_binding_t *input_binding(const joystick_profile_t *profile,
+                                          unsigned input) {
+    return input < JOY_DIRECTION_COUNT
+        ? &profile->direction[input] : &profile->button[input - JOY_DIRECTION_COUNT];
+    return &profile->button[0];
+}
+
+bool joystick_autofire_enabled(uint8_t inputs, const joystick_profile_t *profile) {
+    for (unsigned input = 0; input < INPUT_COUNT; ++input) {
+        const ini_binding_t *binding = input_binding(profile, input);
+        if (binding->autofire && joystick_input_pressed(inputs, (input_id_t)input))
             return true;
-        }
     }
     return false;
 }
@@ -155,17 +161,21 @@ uint32_t joystick_report_interval_us(joystick_speed_t speed, bool autofire_activ
  * nothing, so the shared output follows only the autofire pattern. Two buttons
  * emit the same output exactly when their codes are equal (the autofire flag
  * lives separately in the mask). */
-static bool fire_effective(const autofire_state_t *state,
-                           const joystick_settings_t *settings,
-                           unsigned fire_button, uint8_t inputs) {
-    if (!joystick_input_pressed(inputs, joystick_fire_input(fire_button))) return false;
-    unsigned bit = 1u << fire_button;
-    if (settings->autofire_mask & bit) return state->pulse;
-    for (unsigned o = 0; o < 4; ++o) {
-        if (o == fire_button) continue;
-        if (!(settings->autofire_mask & (1u << o))) continue;
-        if (!joystick_input_pressed(inputs, joystick_fire_input(o))) continue;
-        if (settings->button_code[o] == settings->button_code[fire_button]) {
+static bool binding_equal(const ini_binding_t *a, const ini_binding_t *b) {
+    return a->type == b->type && a->value == b->value && a->modifier == b->modifier;
+}
+
+static bool binding_effective(const autofire_state_t *state,
+                              const joystick_profile_t *profile,
+                              unsigned input, uint8_t inputs) {
+    const ini_binding_t *binding = input_binding(profile, input);
+    if (!joystick_input_pressed(inputs, (input_id_t)input)) return false;
+    if (binding->autofire) return state->pulse;
+    for (unsigned other = 0; other < INPUT_COUNT; ++other) {
+        const ini_binding_t *candidate = input_binding(profile, other);
+        if (other != input && candidate->autofire &&
+            joystick_input_pressed(inputs, (input_id_t)other) &&
+            binding_equal(candidate, binding)) {
             return false;
         }
     }
@@ -173,21 +183,20 @@ static bool fire_effective(const autofire_state_t *state,
 }
 
 joystick_report_t joystick_make_report(autofire_state_t *state, uint8_t inputs,
-                                       const joystick_settings_t *settings,
+                                       const joystick_profile_t *profile,
                                        bool suppress_fire) {
-    bool up = joystick_input_pressed(inputs, INPUT_UP);
-    bool down = joystick_input_pressed(inputs, INPUT_DOWN);
-    bool left = joystick_input_pressed(inputs, INPUT_LEFT);
-    bool right = joystick_input_pressed(inputs, INPUT_RIGHT);
+    bool up = false, down = false, left = false, right = false;
     uint8_t buttons = 0;
-    if (!suppress_fire) {
-        for (unsigned code = INI_CODE_JOY1; code <= INI_CODE_JOY4; ++code) {
-            for (unsigned b = 0; b < 4; ++b) {
-                if (settings->button_code[b] == code &&
-                    fire_effective(state, settings, b, inputs)) {
-                    buttons |= 1u << (code - INI_CODE_JOY1);
-                }
-            }
+    for (unsigned input = 0; input < INPUT_COUNT; ++input) {
+        const ini_binding_t *binding = input_binding(profile, input);
+        if (suppress_fire || !binding_effective(state, profile, input, inputs)) continue;
+        if (binding->type == INI_BIND_AXIS) {
+            if (binding->value == INPUT_UP) up = true;
+            else if (binding->value == INPUT_DOWN) down = true;
+            else if (binding->value == INPUT_LEFT) left = true;
+            else if (binding->value == INPUT_RIGHT) right = true;
+        } else if (binding->type == INI_BIND_GAMEPAD && binding->value <= 4) {
+            buttons |= (uint8_t)(1u << (binding->value - 1));
         }
     }
     joystick_report_t report = {
@@ -200,23 +209,22 @@ joystick_report_t joystick_make_report(autofire_state_t *state, uint8_t inputs,
 
 joystick_keyboard_report_t joystick_make_keyboard_report(autofire_state_t *state,
                                        uint8_t inputs,
-                                       const joystick_settings_t *settings,
+                                       const joystick_profile_t *profile,
                                        bool suppress_fire) {
     joystick_keyboard_report_t report = {0};
     if (suppress_fire) return report;
     unsigned count = 0;
-    for (unsigned b = 0; b < 4; ++b) {
-        if (!fire_effective(state, settings, b, inputs)) continue;
-        uint8_t code = settings->button_code[b];
-        if (ini_config_joy_button(code) != 0) continue; /* Gamepad button. */
-        report.modifier |= ini_config_modifier(code);
-        uint8_t keycode = ini_config_keycode(code);
-        if (keycode == 0) continue; /* NONE or modifier-only. */
+    for (unsigned input = 0; input < INPUT_COUNT; ++input) {
+        const ini_binding_t *binding = input_binding(profile, input);
+        if (!binding_effective(state, profile, input, inputs) ||
+            binding->type != INI_BIND_KEYBOARD) continue;
+        report.modifier |= binding->modifier;
+        if (binding->value == INI_CODE_NONE) continue;
         bool duplicate = false;
         for (unsigned k = 0; k < count; ++k) {
-            if (report.keycodes[k] == keycode) { duplicate = true; break; }
+            if (report.keycodes[k] == ini_config_keycode(binding->value)) { duplicate = true; break; }
         }
-        if (!duplicate && count < 6) report.keycodes[count++] = keycode;
+        if (!duplicate && count < 6) report.keycodes[count++] = ini_config_keycode(binding->value);
     }
     return report;
 }

@@ -7,8 +7,8 @@ The original switches and enclosure can be kept while the firmware adds faster i
 ### Key features
 
 - Four persistent button-mapping profiles named Red, Green, Purple, and Yellow.
-- Each profile can assign the physical fire buttons to gamepad buttons, keyboard keys, or keyboard modifiers.
-- Optional autofire can be assigned to any mapped button.
+- Each profile can assign all four fire buttons and all four directions to joystick directions, gamepad buttons, keyboard keys, or keyboard combinations.
+- Optional autofire can be assigned to any mapped input, including directions.
 - Hold both small buttons and move the joystick Up, Down, Left, or Right to select a profile.
 - Fast polling for responsive games and slow polling for compatibility with older systems.
 - A simple USB configuration drive for editing all four profiles without rebuilding the firmware.
@@ -48,7 +48,7 @@ Default USB mapping:
 | Small Fire 2 | Button 3 |
 
 Every output can be remapped at runtime through the built-in configuration
-drive — see [Configuring the fire buttons](#configuring-the-fire-buttons).
+drive — see [Configuring the mappings](#configuring-the-mappings).
 
 ### 2. Build the firmware
 
@@ -133,40 +133,57 @@ Gestures use the physical fire buttons and cannot be remapped. Hold a pair for
 
 Settings are saved and restored after reboot. Releasing the buttons cancels a gesture before its hold time is reached.
 
-## Configuring the fire buttons
+## Configuring the mappings
 
-The four fire buttons can be remapped independently for each button-mapping
-profile without rebuilding the firmware. Profiles can send gamepad buttons,
-keyboard keys, or keyboard modifiers, and any mapped button can use autofire.
+The four fire buttons and four joystick directions can be remapped independently
+for each button-mapping profile without rebuilding the firmware. Profiles can
+send joystick directions, gamepad buttons, keyboard keys, or keyboard
+combinations, and any mapped input can use autofire.
 
 1. Hold **Small Fire 1 + Small Fire 2 for 3 seconds**, then release. While
    holding, the status LED lights once config mode is selected. On release the
    board reboots into configuration mode: the joystick is disconnected and a
    USB drive appears. (Holding for 6 seconds and releasing instead reboots into
    BOOTSEL update mode.)
-2. Open the `JOYSTICK.INI` file and edit the four `buttonN=` lines in each
-   color section:
+2. Open the `JOYSTICK.INI` file and edit the eight mapping lines in each
+   profile section:
 
    ```ini
    [RED]
+   up=UP
+   down=DOWN
+   left=LEFT
+   right=RIGHT
    button1=JOY1            ; Button 1 (default for Big Fire 1)
    button2=JOY2            ; Button 2 (default for Big Fire 2)
-   button3=JOY1:AUTOFIRE   ; autofire Button 1 (default for Small Fire 1)
+   button3=SHIFT+A         ; Keyboard combination
    button4=JOY3            ; Button 3 (default for Small Fire 2)
 
    [GREEN]
+   up=W
+   down=S
+   left=A
+   right=D
    button1=JOY1
    button2=JOY2
-   button3=JOY1:AUTOFIRE
+   button3=CTRL+ALT+B:AUTOFIRE
    button4=JOY3
 
    [PURPLE]
+   up=UP:AUTOFIRE
+   down=DOWN
+   left=LEFT
+   right=RIGHT
    button1=JOY1
    button2=JOY2
    button3=JOY1:AUTOFIRE
    button4=JOY3
 
    [YELLOW]
+   up=UP
+   down=DOWN
+   left=LEFT
+   right=RIGHT
    button1=JOY1
    button2=JOY2
    button3=JOY1:AUTOFIRE
@@ -177,6 +194,7 @@ keyboard keys, or keyboard modifiers, and any mapped button can use autofire.
 
    | Group | Codes |
    |---|---|
+   | Joystick directions | `UP`, `DOWN`, `LEFT`, `RIGHT` |
    | Gamepad buttons | `JOY1` .. `JOY4` |
    | Letters | `A` .. `Z` |
    | Digits | `0` .. `9` |
@@ -193,14 +211,17 @@ Notes:
 
 - Names and values are case-insensitive; lines starting with `;` are comments;
   `\\r\\n` or `\\n` line endings are accepted.
-- All four profile sections and their `buttonN=` lines must be present and valid,
+- All four profile sections and all eight mapping lines must be present and valid,
   otherwise the previous configuration is kept.
-- `:AUTOFIRE` (case-insensitive) repeats the virtual press at the configured
-  rate while that fire button is held. Gamepad buttons and keys both support it.
-- Autofire takes priority: if a button with `:AUTOFIRE` and a normal button
-  share the same output (e.g. `SPACE:AUTOFIRE` and `SPACE`, or `JOY1:AUTOFIRE`
-  and `JOY1`), the shared output follows only the autofire pattern while the
-  autofire button is held — the held normal button is suppressed.
+- Use `SHIFT+A`, `CTRL+ALT+B`, or similar plus-separated combinations for one
+  physical input. Add `:AUTOFIRE` to any mapping, including a direction, to
+  repeat it at the configured rate while held.
+- To reverse the joystick in a profile, swap its axis values, for example
+  `up=DOWN`, `down=UP`, `left=RIGHT`, and `right=LEFT`.
+- Autofire takes priority: if an input with `:AUTOFIRE` and another input share
+  the same output (e.g. `SPACE:AUTOFIRE` and `SPACE`, or `JOY1:AUTOFIRE` and
+  `JOY1`), the shared output follows only the autofire pattern while the
+  autofire input is held — the held normal input is suppressed.
 - The board reboots after an eject. If `JOYSTICK.INI` has changed the mapping,
   the new settings are used; an unchanged file exits config mode without an
   error indication.

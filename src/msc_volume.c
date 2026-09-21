@@ -93,11 +93,15 @@ static size_t format_ini(const joystick_settings_t *settings,
                          uint8_t *out, size_t cap) {
     static const char header[] =
         "; Retro 2040 Competition Pro configuration\r\n"
-        "; Button outputs: JOY1..JOY4, A..Z, 0..9, ENTER, ESC, BACKSPACE,\r\n"
-        "; TAB, SPACE, F1..F12, SHIFT, CTRL, ALT or NONE.\r\n"
-        "; Add :AUTOFIRE after a name to repeat a virtual press while held.\r\n"
+        "; Each direction and button accepts one output, or NONE to disable it.\r\n"
+        "; Joystick: UP DOWN LEFT RIGHT. Gamepad: JOY1 JOY2 JOY3 JOY4.\r\n"
+        "; Keyboard: A-Z, 0-9, ENTER ESC BACKSPACE TAB SPACE, or F1-F12.\r\n"
+        "; Modifiers: SHIFT CTRL ALT. Combine with +, for example SHIFT+A.\r\n"
+        "; Add :AUTOFIRE to any output, for example JOY1:AUTOFIRE or UP:AUTOFIRE.\r\n"
+        "; Reverse axes by swapping values, for example up=DOWN and down=UP.\r\n"
         "\r\n";
-    static const char key[][9] = { "button1=", "button2=", "button3=", "button4=" };
+    static const char key[][12] = { "up=", "down=", "left=", "right=",
+                                    "button1=", "button2=", "button3=", "button4=" };
     static const char section[][12] = { "[RED]\r\n", "[GREEN]\r\n",
                                         "[PURPLE]\r\n", "[YELLOW]\r\n" };
     size_t used = 0;
@@ -110,23 +114,17 @@ static size_t format_ini(const joystick_settings_t *settings,
         if (used + section_len > cap) return 0;
         memcpy(out + used, section[p], section_len);
         used += section_len;
-        for (unsigned i = 0; i < 4; ++i) {
-            uint8_t code = p == settings->active_profile
-                ? settings->button_code[i] : settings->profiles[p][i];
-            uint8_t mask = p == settings->active_profile
-                ? settings->autofire_mask : settings->profile_autofire_mask[p];
-            const char *name = ini_config_code_name(code);
-            size_t len = strlen(key[i]) + strlen(name) + 2 + 2;
-            if (mask & (1u << i)) len -= 2;
-            if (used + len > cap) return 0;
-            memcpy(out + used, key[i], strlen(key[i]));
-            used += strlen(key[i]);
-            memcpy(out + used, name, strlen(name));
-            used += strlen(name);
-            if (mask & (1u << i)) {
-                memcpy(out + used, ":AUTOFIRE", 9);
-                used += 9;
-            }
+        for (unsigned i = 0; i < JOY_PROFILE_INPUT_COUNT; ++i) {
+            const ini_binding_t *binding = i < JOY_DIRECTION_COUNT
+                ? &settings->profiles[p].direction[i]
+                : &settings->profiles[p].button[i - JOY_DIRECTION_COUNT];
+            char value[64];
+            size_t key_len = strlen(key[i]);
+            if (!ini_config_binding_format(binding, value, sizeof(value))) return 0;
+            size_t value_len = strlen(value);
+            if (used + key_len + value_len + 2 > cap) return 0;
+            memcpy(out + used, key[i], key_len); used += key_len;
+            memcpy(out + used, value, value_len); used += value_len;
             out[used++] = '\r';
             out[used++] = '\n';
         }

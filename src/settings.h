@@ -8,7 +8,7 @@
 #include "joystick.h"
 
 #define JOY_SETTINGS_MAGIC   0x4a535447u
-#define JOY_SETTINGS_VERSION 8u
+#define JOY_SETTINGS_VERSION 9u
 
 typedef struct {
     uint32_t magic;
@@ -17,8 +17,7 @@ typedef struct {
     uint8_t rate_hz;
     uint8_t led_enabled;
     uint8_t reserved1;
-    uint8_t profile_button_code[JOY_PROFILE_COUNT][JOY_BUTTON_COUNT];
-    uint8_t profile_autofire_mask[JOY_PROFILE_COUNT];
+    joystick_profile_t profiles[JOY_PROFILE_COUNT];
     uint8_t active_profile;
     uint8_t reserved2;
     uint32_t sequence;
@@ -38,5 +37,6 @@ bool joystick_settings_equal(const joystick_settings_t *a,
 void joystick_settings_select_profile(joystick_settings_t *settings, uint8_t profile);
 void joystick_settings_sync_active_profile(joystick_settings_t *settings);
 void joystick_settings_reset_profile(joystick_settings_t *settings, uint8_t profile);
+const joystick_profile_t *joystick_settings_active_profile(const joystick_settings_t *settings);
 
 #endif
